@@ -1,0 +1,72 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1 class="text-2xl font-semibold mb-4">Admin • Plans & Subscriptions</h1>
+<p class="text-sm text-gray-600 mb-4">Assign or update a user's subscription. Plans: free, basic, pro. Status: active, cancelled, expired.</p>
+
+<div class="bg-white p-4 rounded-xl shadow-sm border">
+  <div class="overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="text-left border-b bg-gray-50">
+          <th class="py-2 px-2">User</th>
+          <th class="py-2 px-2">Current Plan</th>
+          <th class="py-2 px-2">Status</th>
+          <th class="py-2 px-2">Expires At</th>
+          <th class="py-2 px-2"></th>
+        </tr>
+      </thead>
+      <tbody class="divide-y">
+        {% for u in users %}
+        <tr>
+          <td class="py-2 px-2">
+            <div class="font-medium">{{ u.email }}</div>
+            <div class="text-xs text-gray-500">id: {{ u.id }} · role: {{ u.role }}</div>
+          </td>
+          {% set sub = subs_map.get(u.id) %}
+          <td class="py-2 px-2">{{ sub.plan_name.value if sub else '-' }}</td>
+          <td class="py-2 px-2">{{ sub.status.value if sub else '-' }}</td>
+          <td class="py-2 px-2">{{ sub.expires_at.isoformat() if sub and sub.expires_at else '-' }}</td>
+          <td class="py-2 px-2 text-right">
+            <details class="inline-block">
+              <summary class="cursor-pointer px-3 py-1.5 border rounded bg-white hover:bg-gray-50">Edit</summary>
+              <div class="mt-2 p-3 border rounded bg-gray-50">
+                <form method="post" action="/admin/plans/save" class="grid md:grid-cols-4 gap-2 items-end">
+                  <input type="hidden" name="owner_id" value="{{ u.id }}" />
+                  <div>
+                    <label class="block text-xs text-gray-600">Plan</label>
+                    <select name="plan_name" class="border rounded p-1">
+                      {% for p in PlanName %}
+                        <option value="{{ p.value }}" {% if sub and sub.plan_name == p %}selected{% endif %}>{{ p.value }}</option>
+                      {% endfor %}
+                    </select>
+                  </div>
+                  <div>
+                    <label class="block text-xs text-gray-600">Status</label>
+                    <select name="status" class="border rounded p-1">
+                      {% for s in SubscriptionStatus %}
+                        <option value="{{ s.value }}" {% if sub and sub.status == s %}selected{% endif %}>{{ s.value }}</option>
+                      {% endfor %}
+                    </select>
+                  </div>
+                  <div>
+                    <label class="block text-xs text-gray-600">Expires At</label>
+                    <input type="date" name="expires_at" class="border rounded p-1" value="{{ sub.expires_at.date().isoformat() if sub and sub.expires_at else '' }}" />
+                  </div>
+                  <div class="text-right">
+                    <button class="px-3 py-2 bg-blue-600 text-white rounded">Save</button>
+                  </div>
+                </form>
+              </div>
+            </details>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="mt-4">
+  <a href="/admin/" class="px-3 py-2 border rounded bg-white">Back to Admin</a>
+</div>
+{% endblock %}

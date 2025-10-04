@@ -55,8 +55,9 @@ StayCal is a calendar-first, multi-tenant room management and booking web applic
   - Upcoming Check-ins list for the active homestay.
   - Period-based stats filter (start/end). Defaults to current month if no period provided.
 
-- Admin (very minimal)
+- Admin
   - /admin shows lists of Users, Homestays, Subscriptions for admin users.
+  - /admin/plans lets admins assign or update a user's subscription (plan, status, expiry).
 
 ---
 
@@ -423,3 +424,213 @@ Add your preferred open-source license here.
 ## License
 
 Copyright © 2025. All rights reserved. Update with your chosen license.
+
+
+---
+
+## 12. Monetization Strategy & Pricing (Detailed)
+
+This section outlines a sustainable, flexible monetization model for StayCal that fits small homestays and scales as they grow. It includes pricing tiers, add‑ons, usage limits and overages, billing operations, regional pricing (THB‑first), trials/discounts, plan enforcement, and success metrics.
+
+### 12.1 Pricing Model Overview
+
+- Core model: Subscription (monthly/annual) with plan‑based feature gates and limits.
+- Primary value axes:
+  - Rooms (inventory size and operational complexity)
+  - Seats (number of users/staff)
+  - Advanced features (automation, integrations, reporting)
+- Secondary monetization: Add‑ons (charged per property/tenant), usage‑based overages for optional services.
+
+Mermaid plan ladder (overview):
+
+```mermaid
+flowchart TB
+  A[Free] --> B[Basic]
+  B --> C[Pro]
+  click A "#free-tier-details" "Free tier details"
+  click B "#basic-tier-details" "Basic tier details"
+  click C "#pro-tier-details" "Pro tier details"
+
+  subgraph Features by tier
+  direction LR
+  F1[Rooms Limit]:::f --> F2[Seats Limit]:::f --> F3[Calendar + HTMX]:::f --> F4[Conflict Detection]:::f --> F5[FullCalendar UI]:::f
+  F6[Overview / Period Stats]:::p --> F7[Auto-Checkout]:::p --> F8[Export/Reports]:::p
+  F9[Integrations / iCal]:::pro --> F10[API Access]:::pro --> F11[Priority Support]:::pro
+  end
+
+  classDef f fill:#eef,stroke:#88f,color:#124;
+  classDef p fill:#efe,stroke:#6b6,color:#143;
+  classDef pro fill:#ffe,stroke:#cc4,color:#432;
+```
+
+### 12.2 Tiered Plans
+
+#### Free Tier (anchor)  <a id="free-tier-details"></a>
+- 1 user, up to 2 rooms.
+- Core calendar with conflict detection and booking CRUD.
+- Auto‑checkout and today’s operations widgets.
+- Community support only.
+- Purpose: frictionless onboarding; showcase core value.
+
+#### Basic Tier  <a id="basic-tier-details"></a>
+- Up to 5 users, up to 10 rooms.
+- Everything in Free, plus:
+  - Full Overview with current‑month default period stats.
+  - CSV export (bookings, rooms) and simple monthly report.
+  - Email support (best‑effort).
+- Suggested pricing (example):
+  - THB 249/month or THB 2,490/year (2 months free).
+
+#### Pro Tier  <a id="pro-tier-details"></a>
+- Unlimited users and rooms.
+- Everything in Basic, plus:
+  - iCal export (per‑room), manual import (MVP) with dedupe rules.
+  - Upcoming arrivals dashboard and occupancy KPIs.
+  - Priority support (response‑time target) and onboarding assistance.
+- Suggested pricing (example):
+  - THB 699/month or THB 6,990/year.
+
+Note: Exact pricing should be validated by interviews and willingness‑to‑pay tests; keep regional purchasing power in mind.
+
+### 12.3 Add‑ons (Optional upsells)
+- SMS notifications (per message, usage‑based; country‑specific rates).
+- WhatsApp / LINE notifications (per message or monthly bundle).
+- Branded PDF reports (per homestay, monthly add‑on).
+- Multi‑property portfolio view (if owner manages 2+ properties) — flat monthly.
+- Channel sync (future) — priced per connected channel.
+
+### 12.4 Usage Limits and Overage Strategy
+- Free limits enforced strictly; Basic/Pro enforce soft limits with warnings before hard cap.
+- Optional overage for message‑based add‑ons (pay‑as‑you‑go) with prepaid bundles to avoid surprise bills.
+- Clear UI indicators when nearing plan limits (e.g., 80% of rooms/seats limit).
+
+### 12.5 Billing, Trials, and Discounts
+- Billing provider: Stripe (recommended) for subscriptions, proration, invoices, and dunning.
+- Trials: 14‑day trial on Basic/Pro (no card initially for MVP; card‑required can be A/B tested later).
+- Coupons/Discounts: Intro offers, annual prepay discount (~16–20%), nonprofit/education discounts on request.
+- Proration: mid‑cycle upgrade charges prorated automatically; downgrades effective next cycle by default.
+- Invoicing: Email receipts; downloadable invoices inside the app (owner only).
+- Dunning: Stripe Smart Retries + email reminders; downgrade to Free after grace period if payment fails.
+
+Mermaid billing lifecycle:
+
+```mermaid
+flowchart LR
+  U[User selects plan] --> T{Trial?}
+  T -- yes --> TR[Start trial]
+  T -- no --> S[Start paid subscription]
+  TR --> A[Trial end]
+  A --> |auto-convert| S
+  S --> B{Payment success?}
+  B -- yes --> ACT[Active]
+  B -- no --> DNG[Dunning & Retries]
+  DNG --> |recover| ACT
+  DNG --> |fail grace| DWN[Auto downgrade to Free]
+```
+
+### 12.6 Plan Enforcement (Product side)
+- Authentication/Authorization:
+  - Plan and limits attached to tenant (homestay owner).
+  - Staff inherit owner’s plan limitations.
+- Enforcement examples:
+  - Room creation blocked beyond plan limit (with upgrade CTA).
+  - Seat invitations blocked beyond plan limit.
+  - Features behind flags (e.g., iCal export only on Pro).
+- Grace behaviors:
+  - Read‑only access to over‑limit data after downgrade.
+  - Continue calendar view, but block new booking creation if critical limits exceeded (configurable).
+
+### 12.7 Metrics & Analytics
+- Core SaaS metrics: MRR, Churn, LTV, ARPU, CAC (track via Stripe data + internal events).
+- Product metrics: activation rate (Homestay → Room → Booking), time‑to‑value, monthly active properties.
+- Expansion revenue: upsell adoption (Pro, Add‑ons), average rooms per tenant growth.
+- Instrument events (page views, CRUD actions, upgrades) with a lightweight analytics tool; ensure GDPR/PDPA compliance.
+
+### 12.8 Go‑to‑Market Levers
+- Self‑serve onboarding with Free tier + in‑product upgrade prompts.
+- Referral program: 1 free month for referrer + referee after first paid month.
+- Partnerships: local tourism boards, homestay associations; offer group discounts.
+- Content/SEO: “homestay booking calendar template”, “B&B calendar PMS” guides.
+
+### 12.9 Regional Pricing and Currency
+- Default display currency: THB; support multi‑currency pricing tables via Stripe Prices.
+- Localized tax handling (VAT) via Stripe Tax when expanding regions.
+- Accept local payment methods where possible for conversion uplift.
+
+### 12.10 Operational Notes (MVP → Production)
+- Begin with manual plan assignment (admin) while payments are wired up.
+- Introduce Stripe Checkout + Customer Portal for self‑serve upgrades/downgrades.
+- Background job to sync subscription status (webhooks) and enforce in app.
+- Maintain a changelog of plan/limit changes per tenant for support/audit.
+
+Mermaid system interaction (payments):
+
+```mermaid
+sequenceDiagram
+  participant U as User (Owner)
+  participant SC as StayCal App
+  participant ST as Stripe
+  U->>SC: Upgrade to Pro
+  SC->>ST: Create Checkout Session (price_id, customer)
+  ST-->>U: Hosted Checkout
+  U-->>ST: Payment details
+  ST-->>SC: Webhook: checkout.session.completed
+  SC->>SC: Activate Pro plan, update limits
+  SC-->>U: Confirmation (Pro active)
+  ST-->>SC: Webhook: invoice.payment_failed (later)
+  SC->>SC: Start dunning, set grace window
+```
+
+### 12.11 Example Pricing Summary (Draft)
+- Free: 1 user, 2 rooms. ฿0. Always free.
+- Basic: 5 users, 10 rooms. ฿249/mo or ฿2,490/yr.
+- Pro: Unlimited users & rooms. ฿699/mo or ฿6,990/yr.
+- Add‑ons: SMS/WhatsApp notifications (usage‑based), Branded Reports, Portfolio View, Channel Sync (future).
+
+> Note: All prices are placeholders for illustration; validate with local market research and adjust.
+
+
+---
+
+## 13. To‑Do: Interesting Feature Ideas
+
+These are high‑leverage, user‑visible enhancements we’re considering post‑MVP. They complement (not duplicate) the existing Roadmap and Monetization sections.
+
+- Seasonal Pricing & Rate Plans
+  - Define seasons, weekend/weekday rules, and per‑room overrides; visualize rates on a mini rate calendar.
+- Extras, Packages, and Line‑Items
+  - Add optional upsells to a booking (breakfast, airport pickup, tours), auto‑sum totals, and include in reports.
+- Housekeeping & Turnover Board
+  - Auto‑generate cleaning tasks between stays, assign to staff, track statuses (To Do / In Progress / Done).
+- Smart Room Assignment (Optimization)
+  - Suggest the best room for a new booking to minimize gaps and maximize occupancy; offer alternatives if conflicts.
+- Maintenance & Blackout Dates
+  - Block rooms for maintenance with notes and attachments; reflect blocks on calendars and in availability APIs.
+- Guest CRM & Loyalty
+  - Profiles with stay history, tags, notes; quick rebook; PDPA/GDPR export; optional loyalty tiers.
+- Digital Pre‑Check‑in
+  - Pre‑arrival form, ID/photo upload, e‑signature for registration card; automate status transition to checked_in.
+- PWA & Offline Mode
+  - Installable web app with cached dashboards; queue actions while offline and sync when back online.
+- Multi‑language (i18n) & Locale Support
+  - UI translations (TH/EN first), localized dates/currency formats, right‑to‑left readiness where applicable.
+- Two‑Way Calendar Sync (Extended)
+  - Robust iCal/OTA two‑way sync with dedupe, conflict resolution UI, and background jobs.
+- Notifications Hub
+  - WhatsApp/LINE/SMS/email templates; triggers for reminders, upcoming arrivals, overdue check‑outs.
+- Webhooks & Public API
+  - Outbound webhooks for booking/room events; API keys per tenant with scopes; simple REST endpoints.
+- Advanced Analytics
+  - Occupancy, ADR, RevPAR, pickup/pace; channel mix; export as CSV/PDF with branded templates.
+- Accounting Exports
+  - Xero/QuickBooks CSV exports; basic mapping of revenue categories and taxes.
+- Roles & Permissions Matrix
+  - Granular capabilities beyond owner/staff (e.g., housekeeping, front desk); audit trail of critical changes.
+- Bulk Calendar Operations (Enhanced)
+  - Multi‑select move/cancel; resize bookings in FullCalendar; keyboard shortcuts for power users.
+- Print & Share
+  - PDF calendar snapshots and shareable read‑only links for owners/partners.
+- Dark Mode & Theming
+  - Per‑user theme preference with accessible color palettes; auto respect system dark mode.
+
+> Note: Items above are candidate ideas. Prioritization will be informed by user feedback, support volume, and impact on activation/retention.
