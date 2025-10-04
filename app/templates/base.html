@@ -1,29 +1,60 @@
 <!doctype html>
-<html>
+<html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="StayCal — calendar-first room & booking management for small homestays." />
+  <meta name="theme-color" content="#2563eb" />
   <title>{{ title or 'StayCal' }}</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%232566eb'/%3E%3Ctext x='50' y='62' text-anchor='middle' font-size='56' fill='white' font-family='sans-serif'%3E📅%3C/text%3E%3C/svg%3E" />
   <script src="https://unpkg.com/htmx.org@1.9.12"></script>
   <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.css" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
 </head>
 <body class="bg-gray-50 text-gray-900">
-  <nav class="bg-white border-b px-4 py-3 flex items-center justify-between">
-    <a href="/" class="font-semibold text-lg">StayCal</a>
-    <div class="flex items-center gap-4">
-      {% if user %}
-      <a href="/app" class="text-sm text-gray-600 hover:text-gray-900">Dashboard</a>
-      <form method="post" action="/auth/logout">
-        <button class="text-sm text-gray-600 hover:text-gray-900">Logout</button>
-      </form>
-      {% else %}
-      <a href="/auth/login" class="text-sm text-gray-600 hover:text-gray-900">Login</a>
-      <a href="/auth/register" class="text-sm text-gray-600 hover:text-gray-900">Register</a>
-      {% endif %}
+  <nav class="bg-white/90 backdrop-blur border-b px-4 md:px-6 py-3 sticky top-0 z-40">
+    <div class="max-w-6xl mx-auto flex items-center justify-between gap-3">
+      <a href="/" class="flex items-center gap-2 font-semibold text-lg">
+        <span class="inline-flex w-8 h-8 items-center justify-center rounded-lg bg-blue-600 text-white">SC</span>
+        <span>StayCal</span>
+      </a>
+      <div class="flex items-center gap-2 md:gap-3">
+        {% if user %}
+          <a href="/app" class="px-3 py-1.5 text-sm rounded hover:bg-gray-100">Dashboard</a>
+          <a href="/app/overview" class="hidden sm:inline px-3 py-1.5 text-sm rounded hover:bg-gray-100">Overview</a>
+          <a href="/app/homestays/" class="hidden sm:inline px-3 py-1.5 text-sm rounded hover:bg-gray-100">Homestays</a>
+          <a href="/app/rooms/" class="hidden sm:inline px-3 py-1.5 text-sm rounded hover:bg-gray-100">Rooms</a>
+          <a href="/app/bookings/" class="hidden sm:inline px-3 py-1.5 text-sm rounded hover:bg-gray-100">Bookings</a>
+          {% if user.role == 'admin' %}
+            <a href="/admin/" class="hidden sm:inline px-3 py-1.5 text-sm rounded hover:bg-gray-100">Admin</a>
+          {% endif %}
+          <form method="post" action="/auth/logout" class="ml-1">
+            <button class="px-3 py-1.5 text-sm rounded bg-gray-800 text-white hover:bg-black">Logout</button>
+          </form>
+        {% else %}
+          <a href="/auth/login" class="px-3 py-1.5 text-sm rounded hover:bg-gray-100">Login</a>
+          <a href="/auth/register" class="px-3 py-1.5 text-sm rounded bg-blue-600 text-white hover:bg-blue-700">Get Started</a>
+        {% endif %}
+      </div>
     </div>
   </nav>
-  <main class="p-4">
-    {% block content %}{% endblock %}
+
+  <main class="px-4 md:px-6 py-6">
+    <div class="max-w-6xl mx-auto">
+      {% block content %}{% endblock %}
+    </div>
   </main>
+
+  <footer class="mt-8 border-t bg-white/70">
+    <div class="max-w-6xl mx-auto px-4 md:px-6 py-6 text-sm text-gray-600 flex flex-wrap items-center justify-between gap-3">
+      <div>© {{ (now().year if now else 2025) if false else '2025' }} StayCal</div>
+      <div class="flex items-center gap-3">
+        <a href="/" class="hover:text-gray-900">Home</a>
+        <a href="/auth/login" class="hover:text-gray-900">Login</a>
+        <a href="/auth/register" class="hover:text-gray-900">Register</a>
+      </div>
+    </div>
+  </footer>
 </body>
 </html>

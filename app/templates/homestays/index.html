@@ -1,0 +1,71 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1 class="text-2xl font-semibold mb-4">Homestays</h1>
+
+<div class="bg-white p-4 rounded-xl shadow-sm border mb-6">
+  <h2 class="font-medium mb-3">Create Homestay</h2>
+  <form method="post" action="/app/homestays/" class="grid md:grid-cols-3 gap-3">
+    <div>
+      <label class="block text-sm font-medium">Name</label>
+      <input name="name" class="border rounded w-full p-2 focus:outline-none focus:ring-2 focus:ring-blue-500" required />
+    </div>
+    <div class="md:col-span-2">
+      <label class="block text-sm font-medium">Address</label>
+      <input name="address" class="border rounded w-full p-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+    </div>
+    <div class="md:col-span-3 flex items-center gap-2">
+      <label class="text-sm inline-flex items-center gap-2"><input type="checkbox" name="set_active" class="border" /> Set as active after create</label>
+      <button class="ml-auto bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Create</button>
+    </div>
+  </form>
+</div>
+
+<div class="grid md:grid-cols-2 gap-4">
+  <div class="bg-white p-4 rounded-xl shadow-sm border">
+    <h2 class="font-medium mb-2">Your Homestays</h2>
+    {% if owned %}
+    <ul class="divide-y">
+      {% for h in owned %}
+      <li class="py-3 flex items-center justify-between">
+        <div>
+          <div class="font-medium">{{ h.name }}</div>
+          <div class="text-sm text-gray-600">{{ h.address }}</div>
+          {% if current and current.id == h.id %}<div class="text-xs text-green-700 mt-1">Active</div>{% endif %}
+        </div>
+        <div class="flex gap-2">
+          <form method="post" action="/app/homestays/{{ h.id }}/set-active">
+            <button class="px-3 py-1.5 text-sm border rounded hover:bg-gray-50">Set Active</button>
+          </form>
+          <a href="/app/homestays/{{ h.id }}/edit" class="px-3 py-1.5 text-sm border rounded hover:bg-gray-50">Edit</a>
+          <form method="post" action="/app/homestays/{{ h.id }}/delete" onsubmit="return confirm('Delete this homestay? Rooms and bookings will be removed.');">
+            <button class="px-3 py-1.5 text-sm border rounded text-red-700 hover:bg-red-50">Delete</button>
+          </form>
+        </div>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+      <p class="text-sm text-gray-600">No homestays yet. Create one above.</p>
+    {% endif %}
+  </div>
+
+  <div class="bg-white p-4 rounded-xl shadow-sm border">
+    <h2 class="font-medium mb-2">Current Active</h2>
+    {% if current %}
+      <div>
+        <div class="font-medium">{{ current.name }}</div>
+        <div class="text-sm text-gray-600">{{ current.address }}</div>
+        <div class="mt-2">
+          {% if rooms_count is not none and rooms_count == 0 %}
+            <a href="/app/rooms/" class="text-blue-600 hover:underline">Add your first room</a>
+          {% else %}
+            <a href="/app/rooms/" class="text-blue-600 hover:underline">Manage Rooms</a>
+          {% endif %}
+        </div>
+      </div>
+    {% else %}
+      <p class="text-sm text-gray-600">No active homestay selected.</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

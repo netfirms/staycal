@@ -1,34 +1,44 @@
-<div class="fixed inset-0 bg-black/40 flex items-center justify-center">
-  <div class="bg-white rounded shadow p-4 w-full max-w-md">
+<div class="fixed inset-0 bg-black/40 flex items-center justify-center z-50" role="dialog" aria-modal="true" onclick="(function(e){ if(e.target === e.currentTarget){ document.body.classList.remove('overflow-hidden'); document.getElementById('modal').innerHTML=''; } })(event)">
+  <div class="bg-white rounded-xl shadow-lg p-4 w-full max-w-md border" onclick="event.stopPropagation();">
     <h3 class="font-semibold mb-2">New Booking</h3>
     <form hx-post="/htmx/booking/save" hx-target="#modal" hx-swap="outerHTML" class="space-y-3">
       <input type="hidden" name="room_id" value="{{ room_id }}" />
       <div>
-        <label class="block text-sm">Guest name</label>
-        <input name="guest_name" class="border rounded w-full p-2" required />
+        <label class="block text-sm font-medium">Guest name</label>
+        <input name="guest_name" class="border rounded w-full p-2 focus:outline-none focus:ring-2 focus:ring-blue-500" required />
       </div>
       <div>
-        <label class="block text-sm">Guest contact</label>
-        <input name="guest_contact" class="border rounded w-full p-2" />
+        <label class="block text-sm font-medium">Guest contact</label>
+        <input name="guest_contact" class="border rounded w-full p-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
       </div>
       <div class="grid grid-cols-2 gap-2">
         <div>
-          <label class="block text-sm">Start</label>
-          <input type="date" name="start_date" value="{{ start_date }}" class="border rounded w-full p-2" required />
+          <label class="block text-sm font-medium">Start</label>
+          <input type="date" name="start_date" value="{{ start_date }}" class="border rounded w-full p-2 focus:outline-none focus:ring-2 focus:ring-blue-500" required />
         </div>
         <div>
-          <label class="block text-sm">End</label>
-          <input type="date" name="end_date" value="{{ end_date }}" class="border rounded w-full p-2" required />
+          <label class="block text-sm font-medium">End</label>
+          <input type="date" name="end_date" value="{{ end_date }}" class="border rounded w-full p-2 focus:outline-none focus:ring-2 focus:ring-blue-500" required />
         </div>
       </div>
       <div>
-        <label class="block text-sm">Price</label>
-        <input type="number" step="0.01" name="price" class="border rounded w-full p-2" />
+        <label class="block text-sm font-medium">Price (THB)</label>
+        <input type="number" step="0.01" name="price" class="border rounded w-full p-2 focus:outline-none focus:ring-2 focus:ring-blue-500" value="{{ default_rate if default_rate is not none else '' }}" />
       </div>
       <div class="flex gap-2 justify-end">
-        <button type="button" class="px-3 py-2" onclick="document.getElementById('modal').innerHTML=''">Cancel</button>
-        <button class="bg-blue-600 text-white px-4 py-2 rounded">Save</button>
+        <button type="button" class="px-3 py-2 border rounded" onclick="document.body.classList.remove('overflow-hidden'); document.getElementById('modal').innerHTML=''">Cancel</button>
+        <button class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Save</button>
       </div>
     </form>
   </div>
+  <script>
+    (function(){
+      try { document.body.classList.add('overflow-hidden'); } catch(_){ }
+      function onKey(e){ if(e.key === 'Escape'){ try { document.body.classList.remove('overflow-hidden'); } catch(_){}; var m=document.getElementById('modal'); if(m){ m.innerHTML=''; } } }
+      document.addEventListener('keydown', onKey);
+      // remove listener when modal is removed
+      const observer = new MutationObserver(function(){ var m=document.getElementById('modal'); if(m && m.innerHTML.trim()===''){ document.removeEventListener('keydown', onKey); observer.disconnect(); }});
+      observer.observe(document.getElementById('modal'), { childList: true });
+    })();
+  </script>
 </div>

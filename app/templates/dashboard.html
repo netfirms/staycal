@@ -1,22 +1,218 @@
 {% extends 'base.html' %}
 {% block content %}
-<h1 class="text-xl font-semibold mb-4">Dashboard</h1>
-<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-  <div class="bg-white p-4 rounded shadow">
-    <h2 class="font-medium mb-2">Rooms</h2>
-    {% if rooms %}
-      <ul class="list-disc pl-5">
-        {% for r in rooms %}
-          <li class="mb-1">{{ r.name }} (cap {{ r.capacity }})
-            <div class="mt-2">
-              <div id="cal-{{ r.id }}" hx-get="/htmx/calendar/view?year={{ today.year }}&month={{ today.month }}&room_id={{ r.id }}" hx-trigger="load" hx-target="#cal-{{ r.id }}" hx-swap="innerHTML"></div>
+
+{# Header with active homestay and quick actions #}
+<div class="mb-4 bg-white border rounded-xl p-4 flex flex-wrap items-center gap-3">
+  <div class="flex-1 min-w-[200px]">
+    <div class="text-xs text-gray-500">Active Homestay</div>
+    {% if active %}
+      <div class="text-lg font-semibold">{{ active.name }}</div>
+      <div class="text-sm text-gray-600">{{ active.address }}</div>
+    {% else %}
+      <div class="text-lg font-semibold text-gray-700">No active homestay</div>
+      <div class="text-sm text-gray-600">Choose or create one to start managing rooms and bookings.</div>
+    {% endif %}
+  </div>
+  <div class="flex flex-wrap gap-2">
+    <a href="/app/overview" class="px-3 py-2 border rounded bg-white">Overview</a>
+    <a href="/app/homestays/" class="px-3 py-2 border rounded bg-white">Homestays</a>
+    <a href="/app/rooms/" class="px-3 py-2 border rounded bg-white">Rooms</a>
+    <a href="/app/bookings/" class="px-3 py-2 border rounded bg-white">Bookings</a>
+  </div>
+</div>
+
+{# Onboarding banner / CTA #}
+{% set has_homestay = user and user.homestay_id %}
+{% set has_rooms = rooms and rooms|length > 0 %}
+<div class="mb-4 rounded-xl border {{ 'bg-emerald-50 border-emerald-200' if has_rooms else ('bg-blue-50 border-blue-200' if has_homestay else 'bg-amber-50 border-amber-200') }} p-3 flex items-center justify-between">
+  <div class="text-sm">
+    <span class="font-medium">Getting started:</span>
+    <span class="ml-2">
+      <span class="px-2 py-0.5 rounded {{ 'bg-green-100 text-green-800' if has_homestay else 'bg-gray-100 text-gray-700' }}">1. Homestay</span>
+      <span class="mx-1">→</span>
+      <span class="px-2 py-0.5 rounded {{ 'bg-green-100 text-green-800' if has_rooms else ('bg-gray-100 text-gray-700' if has_homestay else 'bg-gray-50 text-gray-400') }}">2. Rooms</span>
+      <span class="mx-1">→</span>
+      <span class="px-2 py-0.5 rounded {{ 'bg-gray-100 text-gray-700' if has_rooms else 'bg-gray-50 text-gray-400' }}">3. Booking</span>
+    </span>
+  </div>
+  <div class="text-sm">
+    {% if not has_homestay %}
+      <a href="/app/homestays/" class="text-blue-700">Create or select a homestay</a>
+    {% elif not has_rooms %}
+      <a href="/app/rooms/" class="text-blue-700">Add your first room</a>
+    {% else %}
+      <a href="/app/bookings/new" class="text-blue-700">Create a booking</a>
+    {% endif %}
+  </div>
+</div>
+
+{# Stats cards #}
+<div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+  <div class="bg-white rounded-lg border p-3">
+    <div class="text-xs text-gray-500">Rooms</div>
+    <div class="text-2xl font-semibold">{{ rooms_count if rooms_count else 0 }}</div>
+  </div>
+  <div class="bg-white rounded-lg border p-3">
+    <div class="text-xs text-gray-500">Check-ins Today</div>
+    <div class="text-2xl font-semibold">{{ checkins_today|length }}</div>
+  </div>
+  <div class="bg-white rounded-lg border p-3">
+    <div class="text-xs text-gray-500">Check-outs Today</div>
+    <div class="text-2xl font-semibold">{{ checkouts_today|length }}</div>
+  </div>
+  <div class="bg-white rounded-lg border p-3">
+    <div class="text-xs text-gray-500">Upcoming</div>
+    <div class="text-2xl font-semibold">{{ upcoming_count }}</div>
+  </div>
+</div>
+
+{# Today operations lists #}
+{% if checkins_today or checkouts_today %}
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+  <div class="bg-white p-4 rounded shadow-sm border">
+    <h2 class="font-medium mb-2">Check-ins Today ({{ checkins_today|length }})</h2>
+    {% if checkins_today %}
+      <ul class="divide-y text-sm">
+        {% for b in checkins_today %}
+          <li class="py-2 flex items-center justify-between">
+            <div>
+              <div class="font-medium">{{ b.guest_name }}</div>
+              <div class="text-gray-600">Room: {{ rooms_map[b.room_id].name if rooms_map.get(b.room_id) else 'Room #' ~ b.room_id }}</div>
+              <div class="text-xs text-gray-500">{{ b.start_date.isoformat() }} → {{ b.end_date.isoformat() }}</div>
             </div>
+            <a href="/app/bookings/{{ b.id }}/edit" class="text-blue-600 text-sm">Manage</a>
           </li>
         {% endfor %}
       </ul>
     {% else %}
-      <p>No rooms yet. (Room management CRUD not included in this MVP scaffold.)</p>
+      <p class="text-sm text-gray-600">No check-ins today.</p>
+    {% endif %}
+  </div>
+  <div class="bg-white p-4 rounded shadow-sm border">
+    <h2 class="font-medium mb-2">Check-outs Today ({{ checkouts_today|length }})</h2>
+    {% if checkouts_today %}
+      <ul class="divide-y text-sm">
+        {% for b in checkouts_today %}
+          <li class="py-2 flex items-center justify-between">
+            <div>
+              <div class="font-medium">{{ b.guest_name }}</div>
+              <div class="text-gray-600">Room: {{ rooms_map[b.room_id].name if rooms_map.get(b.room_id) else 'Room #' ~ b.room_id }}</div>
+              <div class="text-xs text-gray-500">{{ b.start_date.isoformat() }} → {{ b.end_date.isoformat() }}</div>
+            </div>
+            <a href="/app/bookings/{{ b.id }}/edit" class="text-blue-600 text-sm">Manage</a>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="text-sm text-gray-600">No check-outs today.</p>
     {% endif %}
   </div>
 </div>
+{% endif %}
+
+{# Status legend #}
+<div class="mb-3 text-xs text-gray-600 flex flex-wrap items-center gap-3">
+  <span class="inline-flex items-center gap-1"><span class="w-3 h-3 inline-block rounded-sm bg-yellow-300"></span> Tentative</span>
+  <span class="inline-flex items-center gap-1"><span class="w-3 h-3 inline-block rounded-sm bg-green-300"></span> Confirmed</span>
+  <span class="inline-flex items-center gap-1"><span class="w-3 h-3 inline-block rounded-sm bg-blue-300"></span> Checked-in</span>
+  <span class="inline-flex items-center gap-1"><span class="w-3 h-3 inline-block rounded-sm bg-gray-300"></span> Checked-out</span>
+  <span class="text-gray-400">· Click a booking to edit; drag on a calendar to create.</span>
+</div>
+
+{# Rooms calendars #}
+{% if not has_homestay %}
+  <div class="bg-white border rounded-xl p-6 text-center text-gray-700">
+    <div class="text-lg font-medium mb-1">You're almost there</div>
+    <p class="text-sm">Create or select a homestay to start managing rooms and bookings.</p>
+    <a href="/app/homestays/" class="mt-3 inline-block px-4 py-2 bg-blue-600 text-white rounded">Manage Homestays</a>
+  </div>
+{% else %}
+  {% if rooms %}
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {% for r in rooms %}
+      <div class="bg-white border rounded-xl p-3">
+        <details open>
+          <summary class="cursor-pointer list-none flex items-center justify-between">
+            <div class="font-medium">{{ r.name }} <span class="text-xs text-gray-500">(cap {{ r.capacity }})</span></div>
+            <div class="text-sm"><a href="/app/bookings/new?room_id={{ r.id }}" class="text-green-700">New Booking</a></div>
+          </summary>
+          <div class="mt-3">
+            <div id="cal-{{ r.id }}" class="fc-container border rounded"></div>
+          </div>
+        </details>
+      </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="bg-white border rounded-xl p-6 text-center text-gray-700">
+      <div class="text-lg font-medium mb-1">No rooms yet</div>
+      <p class="text-sm">Add your first room to start taking bookings.</p>
+      <a href="/app/rooms/" class="mt-3 inline-block px-4 py-2 bg-blue-600 text-white rounded">Add Room</a>
+    </div>
+  {% endif %}
+{% endif %}
+
+<div id="modal"></div>
+
+<script>
+  (function(){
+    if (!window.FullCalendar) { return; }
+    const calendars = {};
+    const rooms = [{% for r in rooms %}{ id: {{ r.id }}, name: {{ r.name|tojson|safe }} },{% endfor %}];
+    const initialDate = '{{ today.isoformat() }}';
+
+    function initCalendar(roomId){
+      const el = document.getElementById('cal-' + roomId);
+      if (!el) return;
+      const calendar = new FullCalendar.Calendar(el, {
+        initialDate: initialDate,
+        height: 'auto',
+        headerToolbar: {
+          left: 'prev,next today',
+          center: 'title',
+          right: 'dayGridMonth,listMonth'
+        },
+        navLinks: false,
+        selectable: true,
+        selectMirror: true,
+        dayMaxEvents: true,
+        events: function(info, success, failure){
+          fetch(`/htmx/calendar/events?room_id=${roomId}&start=${info.startStr}&end=${info.endStr}`)
+            .then(r => {
+              if (!r.ok) throw new Error('Failed to load events');
+              return r.json();
+            })
+            .then(events => success(events))
+            .catch(err => failure(err));
+        },
+        select: function(info){
+          const url = `/htmx/booking/new?room_id=${roomId}&start_date=${info.startStr}&end_date=${info.endStr}`;
+          fetch(url)
+            .then(r => r.text())
+            .then(html => {
+              const m = document.getElementById('modal');
+              m.innerHTML = html;
+              try { document.body.classList.add('overflow-hidden'); } catch(_){}
+            })
+            .catch(() => {});
+          try { calendar.unselect(); } catch(_){ }
+        },
+        eventClick: function(info){
+          const id = info.event.id;
+          if (id) { window.location.href = `/app/bookings/${id}/edit`; }
+        }
+      });
+      calendar.render();
+      calendars[roomId] = calendar;
+    }
+
+    rooms.forEach(r => initCalendar(r.id));
+
+    document.body.addEventListener('bookingSaved', function(){
+      Object.values(calendars).forEach(c => c.refetchEvents());
+      const modal = document.getElementById('modal');
+      if (modal) { setTimeout(() => { modal.innerHTML = ''; try { document.body.classList.remove('overflow-hidden'); } catch(_){} }, 800); }
+    });
+  })();
+</script>
 {% endblock %}

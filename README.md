@@ -1,13 +1,13 @@
-# StayCal — Homestay Room & Booking Management (Project Plan)
+# StayCal — Homestay Room & Booking Management (Up-to-date Overview)
 
-StayCal is a calendar-first, multi-tenant room management and booking web application designed for small homestays, guesthouses, and B&Bs. The philosophy is simplicity, affordability, and a powerful, visually-driven calendar interface. This document outlines the comprehensive project plan for StayCal per the provided guidelines.
+StayCal is a calendar-first, multi-tenant room management and booking web application designed for small homestays, guesthouses, and B&Bs. The philosophy is simplicity, affordability, and a powerful, visually-driven calendar interface. This README reflects the current implemented codebase and how to run and deploy it.
 
 ---
 
 ## 1. Business Idea & Value Proposition
 
 - Problem: Small homestay owners often rely on cumbersome spreadsheets, paper calendars, or expensive, overly complex Property Management Systems (PMS). They need a simple, affordable, and centralized way to view room availability, manage bookings, and track guest information.
-- Solution: StayCal provides a clean, calendar-first web application that focuses exclusively on booking management. It is built for low operational costs, enabling an affordable subscription model.
+- Solution: StayCal provides a clean, calendar-first web application that focuses on booking management. It is built for low operational costs, enabling an affordable subscription model.
 - Target Audience: Small hospitality operators (1–15 rooms): homestays, guesthouses, B&Bs, boutique inns.
 - Monetization: Tiered monthly/annual subscriptions:
   - Free: 1 user, up to 2 rooms.
@@ -16,112 +16,122 @@ StayCal is a calendar-first, multi-tenant room management and booking web applic
 
 ---
 
-## 2. MVP (Minimum Viable Product) Features
+## 2. Current MVP Features (implemented)
 
-- Admin Superuser:
-  - Dashboard to view all registered businesses/users.
-  - Manage subscription plans and manually activate/deactivate subscriptions.
-- Business/Homestay Owner (Tenant):
-  - Onboarding: Simple sign-up and homestay profile (name, address, etc.).
-  - Subscription: Select a plan (MVP can be manual activation or “Contact Us”).
-  - Room Management: CRUD for rooms with attributes: name, capacity, default rate.
-  - User Management: Invite/add staff with limited permissions (no deletion of rooms or subscription management).
-- Core Feature: Calendar Management (primary dashboard)
-  - Visual Grid: Rooms on Y-axis; calendar days on X-axis.
-  - Booking Creation: Click & drag across dates for a room opens a modal to create booking.
-  - Booking Details: Guest Name, Contact Info, Number of Guests, Agreed Price, Booking Status.
-  - Status Visualization: Color-coded (e.g., Yellow=tentative, Green=confirmed, Blue=checked-in, Grey=checked-out).
-  - Dynamic Updates (HTMX): Create/update/change booking status without full reload; server returns HTML fragments (partials) to swap into the DOM.
-  - Conflict Detection: Prevent double-booking per room for overlapping dates.
+- Public Landing Page
+  - Marketing-style landing with hero, graphics, and CTAs to Register/Login.
+
+- Authentication (session-based)
+  - Register, Login, Logout.
+  - Secure, server-signed cookie stored in the browser.
+
+- Dashboard (/app)
+  - Onboarding stepper to guide Homestay → Rooms → Booking.
+  - Today’s operational widgets: incoming Check-ins and Check-outs for the active homestay.
+  - FullCalendar per-room calendar with event colors by status and quick selection to create bookings.
+
+- Calendar & Bookings
+  - FullCalendar on the client, backed by a JSON events endpoint: GET /htmx/calendar/events.
+  - Booking creation modal via HTMX: GET /htmx/booking/new (returns HTML fragment).
+  - Save booking via HTMX: POST /htmx/booking/save (emits HX-Trigger bookingSaved to refresh calendars).
+  - Prevents double-booking (overlap conflict detection per room).
+  - Booking statuses: tentative, confirmed, checked_in, checked_out, cancelled.
+  - Auto-checkout: any booking whose end_date is in the past is automatically set to checked_out on key views.
+
+- Homestays (CRUD)
+  - Owner creates/edits/deletes homestays.
+  - Set active homestay for current session.
+
+- Rooms (CRUD)
+  - Manage rooms for the active homestay (name, capacity, default_rate).
+
+- Bookings (CRUD)
+  - Create, edit, delete bookings; overlap conflicts prevented.
+  - Price and all money values displayed as THB with thousand separators (e.g., ฿1,234.00).
+
+- Overview (/app/overview)
+  - Stats per homestay: nights, bookings count, profit (sum of booking prices), rooms count.
+  - Today’s counts per homestay: Check-ins Today, Check-outs Today.
+  - Upcoming Check-ins list for the active homestay.
+  - Period-based stats filter (start/end). Defaults to current month if no period provided.
+
+- Admin (very minimal)
+  - /admin shows lists of Users, Homestays, Subscriptions for admin users.
 
 ---
 
 ## 3. High-Level Architecture
 
-- Frontend: HTML5 + CSS with HTMX for interactivity. No SPA framework for MVP.
-- Backend: Monolithic Python service handling auth, business logic, DB, and server-side rendered templates (Jinja2).
-- Database: PostgreSQL storing users, subscriptions, homestays, rooms, bookings.
-- Deployment: Hosted on Railway (app + PostgreSQL service).
+- Frontend: HTML5 + Tailwind CSS. Interactivity via HTMX for partial HTML updates and FullCalendar for the dashboard calendar UI.
+- Backend: Monolithic FastAPI service handling auth, business logic, DB access, and Jinja2 template rendering.
+- Database: SQLAlchemy ORM. Defaults to SQLite locally; supports PostgreSQL in production (Railway).
+- Deployment: Dockerized; designed to run on Railway with a managed PostgreSQL.
 
 Mermaid diagram:
 
 ```mermaid
 flowchart LR
   subgraph Client
-    A[Browser\nHTML + CSS + HTMX]
+    A[Browser\nHTML + CSS + HTMX + FullCalendar]
   end
 
   subgraph Railway[Railway Deployment]
     subgraph App[FastAPI Monolith]
-      B[FastAPI Routers\n- public_views\n- auth_views\n- app_views\n- calendar_htmx_views\n- admin_views]
+      B[FastAPI Routers\n- public_views\n- auth_views\n- app_views\n- rooms_views\n- bookings_views\n- homestays_views\n- calendar_htmx_views\n- admin_views]
       C[Jinja2 Templates\nSSR + HTMX partials]
       D[Security\nSession cookie]
       E[SQLAlchemy ORM]
+      G[Auto-Checkout Service]
     end
 
-    F[(PostgreSQL)]
+    F[(PostgreSQL / SQLite)]
   end
 
-  A -- HTMX requests (GET/POST) --> B
+  A -- HTMX GET/POST --> B
+  A -- FullCalendar events JSON --> B
   B -- Render --> C
   B -- Query/Commit --> E
   E -- Connection --> F
+  B -- trigger --> G
 ```
 
 ---
 
-## 4. Detailed Architecture & Component Breakdown
+## 4. Detailed Architecture & Routes
 
-- Web Framework: FastAPI (preferred) or Flask.
-- Web Server: Uvicorn (with FastAPI) or Gunicorn (with Flask).
-- Templating: Jinja2 for server-side rendering and HTMX partials.
-- Database Interaction: SQLAlchemy ORM (2.0) + Alembic migrations.
-- Authentication: Session-based auth; server-signed cookie post-login.
-- Core Modules (as FastAPI routers or Flask blueprints):
-  - auth_views: Registration, login, logout, password management.
-  - app_views: Dashboard, homestay profile, room CRUD, user management.
-  - calendar_htmx_views: Endpoints returning HTML fragments for calendar:
-    - /htmx/calendar/view
-    - /htmx/booking/new
-    - /htmx/booking/save
-    - /htmx/booking/update-status
-  - admin_views: Superuser admin panel (users, homestays, subscriptions).
+- Web Framework: FastAPI
+- Server: Uvicorn
+- Templates: Jinja2
+- Interactivity: HTMX 1.9+ and FullCalendar 6.x via CDN
+- ORM: SQLAlchemy 2.0 (tables auto-created on app startup for MVP)
+- Auth: Session cookie via itsdangerous
 
-Suggested package layout (FastAPI example):
+Key routers/endpoints:
+- public_views
+  - GET / → Landing page
+- auth_views
+  - GET /auth/login, POST /auth/login
+  - GET /auth/register, POST /auth/register
+  - POST /auth/logout
+- app_views
+  - GET /app → Dashboard (today’s ops, per-room calendars)
+  - GET /app/overview → Stats and listings, with optional ?start=YYYY-MM-DD&end=YYYY-MM-DD; defaults to current month
+- calendar_htmx_views
+  - GET /htmx/booking/new → Booking modal (HTML fragment)
+  - POST /htmx/booking/save → Create booking; emits HX-Trigger: bookingSaved
+  - GET /htmx/calendar/events → JSON events for FullCalendar
+  - POST /htmx/booking/update-status → Update booking status
+- homestays_views
+  - /app/homestays/ (list/create), edit, delete, set-active
+- rooms_views
+  - /app/rooms/ (list/create), edit, delete
+- bookings_views
+  - /app/bookings/ (list), new/create, edit/update, delete
+- admin_views
+  - GET /admin/ (basic admin dashboard; requires role=admin)
 
-```
-app/
-  main.py
-  config.py
-  db.py
-  security.py
-  models/
-    __init__.py
-    user.py
-    homestay.py
-    room.py
-    booking.py
-    subscription.py
-  routers/
-    __init__.py
-    auth_views.py
-    app_views.py
-    calendar_htmx_views.py
-    admin_views.py
-  services/
-    booking_service.py
-    subscription_service.py
-    email_service.py (optional)
-  templates/
-    base.html
-    dashboard.html
-    calendar/
-      grid.html
-      booking_modal.html
-  static/
-    css/
-    js/ (htmx helpers only if needed)
-```
+Auto-checkout integration:
+- Executed on key requests (dashboard, overview, bookings list, calendar view) to mark past end_date bookings as checked_out.
 
 ---
 
@@ -170,58 +180,58 @@ Core tables and fields:
 
 Relationships:
 
-- Owner user has one Homestay and one Subscription.
-- Homestay has many Rooms and many Users (staff).
+- Owner user has one or more Homestays and one Subscription.
+- Homestay has many Rooms and many Users (staff via users.homestay_id).
 - Room has many Bookings.
 
 Mermaid ER diagram:
 
 ```mermaid
 erDiagram
-  USERS ||--o{ HOMESTAYS : "owns"
-  USERS ||--o{ SUBSCRIPTIONS : "has"
-  HOMESTAYS ||--o{ ROOMS : "contains"
-  HOMESTAYS ||--o{ USERS : "staff_of"
-  ROOMS ||--o{ BOOKINGS : "has"
+  USERS ||--o{ HOMESTAYS : owns
+  USERS ||--o{ SUBSCRIPTIONS : has
+  HOMESTAYS ||--o{ ROOMS : contains
+  HOMESTAYS ||--o{ USERS : staff_of
+  ROOMS ||--o{ BOOKINGS : has
 
   USERS {
-    int id PK
-    varchar email UNIQUE
-    varchar hashed_password
-    varchar role
-    int homestay_id FK
-    timestamp created_at
+    id int PK
+    email varchar
+    hashed_password varchar
+    role varchar
+    homestay_id int
+    created_at timestamp
   }
   SUBSCRIPTIONS {
-    int id PK
-    int owner_id FK UNIQUE
-    enum plan_name
-    enum status
-    timestamp expires_at
+    id int PK
+    owner_id int
+    plan_name enum
+    status enum
+    expires_at timestamp
   }
   HOMESTAYS {
-    int id PK
-    int owner_id FK
-    varchar name
-    varchar address
-    timestamp created_at
+    id int PK
+    owner_id int
+    name varchar
+    address varchar
+    created_at timestamp
   }
   ROOMS {
-    int id PK
-    int homestay_id FK
-    varchar name
-    int capacity
-    decimal default_rate
+    id int PK
+    homestay_id int
+    name varchar
+    capacity int
+    default_rate decimal
   }
   BOOKINGS {
-    int id PK
-    int room_id FK
-    varchar guest_name
-    varchar guest_contact
-    date start_date
-    date end_date
-    decimal price
-    enum status
+    id int PK
+    room_id int
+    guest_name varchar
+    guest_contact varchar
+    start_date date
+    end_date date
+    price decimal
+    status enum
   }
 ```
 
@@ -232,6 +242,112 @@ For a given room_id, (start_date, end_date) of any two bookings must not overlap
 ```
 
 ---
+
+## 6. Technology Stack
+
+- Python 3.10+
+- FastAPI + Uvicorn
+- SQLAlchemy 2.0
+- PostgreSQL (production) / SQLite (local default)
+- Jinja2 templates
+- HTMX 1.9+
+- FullCalendar 6.x (via CDN)
+- Tailwind CSS (via CDN)
+- passlib[bcrypt] with bcrypt==4.0.1 (pinned for compatibility)
+
+Key pinned dependencies (see requirements.txt):
+- fastapi==0.118.0
+- uvicorn[standard]==0.30.6
+- sqlalchemy==2.0.34
+- psycopg[binary]==3.2.10
+- python-multipart==0.0.20
+- passlib[bcrypt]==1.7.4
+- bcrypt==4.0.1
+- python-dotenv==1.0.1
+- itsdangerous==2.2.0
+
+---
+
+## 7. Local Development
+
+Quick start with the helper script:
+
+```
+bash run_local.sh
+```
+
+What it does:
+- Creates .venv if missing and installs requirements.
+- Copies .env.example to .env if missing.
+- Exports DEBUG=true and runs the app at http://127.0.0.1:8000 with reload.
+- Uses SQLite staycal.db by default unless DATABASE_URL is set.
+
+Manual steps (alternative):
+- Create venv, install requirements, set env, run:
+
+```
+uvicorn app.main:app --reload
+```
+
+Environment variables (.env):
+- SECRET_KEY=change-me
+- SESSION_COOKIE_NAME=staycal_session
+- DATABASE_URL=postgresql+psycopg://user:password@host:port/dbname (omit to use SQLite)
+
+Initial user journey:
+- Visit / → click Register to create an account.
+- Go to /app/homestays/ → create a Homestay and set it active.
+- Go to /app/rooms/ → add rooms (optionally set default_rate).
+- Go to /app → use the calendar to select dates and create bookings.
+- Manage Bookings at /app/bookings/; edit status, dates, price, etc.
+
+---
+
+## 8. Deployment on Railway
+
+- Dockerfile provided; service listens on PORT (default 8000).
+- Steps:
+  1. Create a PostgreSQL service on Railway.
+  2. Create a service from this repository (Dockerfile build).
+  3. Set environment variables in Railway:
+     - DATABASE_URL (provided automatically by Railway’s Postgres plugin)
+     - SECRET_KEY (set a strong value)
+     - SESSION_COOKIE_NAME (optional)
+  4. Deploy; Railway will assign a public domain.
+
+Dockerfile entrypoint:
+
+```
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "${PORT}"]
+```
+
+---
+
+## 9. Notes & Limitations (MVP)
+
+- Tables are auto-created on startup (Base.metadata.create_all). Use Alembic migrations for production changes.
+- No payment gateway is implemented; subscriptions are modeled but not enforced.
+- Admin panel is minimal and intended for demonstration/testing.
+- Email/notifications are not implemented.
+- Session cookies are not marked secure in DEBUG; set secure cookies behind HTTPS in production.
+
+---
+
+## 10. Changelog (recent highlights)
+
+- Replaced custom month grid with FullCalendar on the dashboard; added JSON events endpoint.
+- Implemented Homestay, Room, and Booking CRUD.
+- Added Overview with period-based stats (defaults to current month), THB currency formatting, today’s check-ins/outs, upcoming check-ins list.
+- Implemented auto-checkout of past-end-date bookings on key pages.
+- Added public landing page with graphics and CTAs.
+- Fixed dependencies and compatibility (psycopg[binary], python-multipart, bcrypt pin) and removed incorrect htmx pip dep.
+- Added run_local.sh helper and .env.example.
+
+---
+
+## 11. License
+
+Add your preferred open-source license here.
 
 ## 6. Minimal Technology Stack
 

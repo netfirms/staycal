@@ -1,30 +1,71 @@
 {% extends 'base.html' %}
 {% block content %}
-<h1 class="text-xl font-semibold mb-4">Admin</h1>
+<h1 class="text-2xl font-semibold mb-4">Admin</h1>
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-  <div class="bg-white p-4 rounded shadow">
+  <div class="bg-white p-4 rounded-xl shadow-sm border">
     <h2 class="font-medium mb-2">Users</h2>
-    <ul class="list-disc pl-5">
-      {% for u in users %}
-        <li>{{ u.email }} — {{ u.role }}</li>
-      {% endfor %}
-    </ul>
+    <div class="overflow-auto max-h-80">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="text-left border-b bg-gray-50">
+            <th class="py-2 px-2">Email</th>
+            <th class="py-2 px-2">Role</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y">
+          {% for u in users %}
+          <tr>
+            <td class="py-2 px-2">{{ u.email }}</td>
+            <td class="py-2 px-2">{{ u.role }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
   </div>
-  <div class="bg-white p-4 rounded shadow">
+  <div class="bg-white p-4 rounded-xl shadow-sm border">
     <h2 class="font-medium mb-2">Homestays</h2>
-    <ul class="list-disc pl-5">
-      {% for h in homestays %}
-        <li>{{ h.name }} — Owner ID {{ h.owner_id }}</li>
-      {% endfor %}
-    </ul>
+    <div class="overflow-auto max-h-80">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="text-left border-b bg-gray-50">
+            <th class="py-2 px-2">Name</th>
+            <th class="py-2 px-2">Owner ID</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y">
+          {% for h in homestays %}
+          <tr>
+            <td class="py-2 px-2">{{ h.name }}</td>
+            <td class="py-2 px-2">{{ h.owner_id }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
   </div>
-  <div class="bg-white p-4 rounded shadow">
+  <div class="bg-white p-4 rounded-xl shadow-sm border">
     <h2 class="font-medium mb-2">Subscriptions</h2>
-    <ul class="list-disc pl-5">
-      {% for s in subs %}
-        <li>Owner {{ s.owner_id }} — {{ s.plan_name.value }} ({{ s.status.value }})</li>
-      {% endfor %}
-    </ul>
+    <div class="overflow-auto max-h-80">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="text-left border-b bg-gray-50">
+            <th class="py-2 px-2">Owner</th>
+            <th class="py-2 px-2">Plan</th>
+            <th class="py-2 px-2">Status</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y">
+          {% for s in subs %}
+          <tr>
+            <td class="py-2 px-2">{{ s.owner_id }}</td>
+            <td class="py-2 px-2">{{ s.plan_name.value }}</td>
+            <td class="py-2 px-2">{{ s.status.value }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
   </div>
 </div>
 {% endblock %}

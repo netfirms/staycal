@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1 class="text-2xl font-semibold mb-4">Bookings</h1>
+<div class="mb-4">
+  <a href="/app/bookings/new" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">New Booking</a>
+</div>
+<div class="bg-white p-4 rounded-xl shadow-sm border">
+  {% if bookings %}
+  <div class="overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="text-left border-b bg-gray-50">
+          <th class="py-2 px-2">Guest</th>
+          <th class="py-2 px-2">Room</th>
+          <th class="py-2 px-2">Dates</th>
+          <th class="py-2 px-2">Price</th>
+          <th class="py-2 px-2">Status</th>
+          <th class="py-2 px-2"></th>
+        </tr>
+      </thead>
+      <tbody class="divide-y">
+        {% for b in bookings %}
+        <tr>
+          <td class="py-2 px-2">{{ b.guest_name }}<div class="text-xs text-gray-500">{{ b.guest_contact }}</div></td>
+          <td class="py-2 px-2">{{ rooms_map[b.room_id].name if rooms_map.get(b.room_id) else 'Room #' ~ b.room_id }}</td>
+          <td class="py-2 px-2">{{ b.start_date.isoformat() }} → {{ b.end_date.isoformat() }}</td>
+          <td class="py-2 px-2">{% if b.price is not none %}฿{{ '{:,.2f}'.format(b.price|float) }}{% else %}-{% endif %}</td>
+          <td class="py-2 px-2">
+            {% set st = b.status.value %}
+            <span class="px-2 py-1 rounded text-xs font-medium 
+              {% if st == 'confirmed' %} bg-green-100 text-green-800
+              {% elif st == 'checked_in' %} bg-blue-100 text-blue-800
+              {% elif st == 'checked_out' %} bg-gray-100 text-gray-800
+              {% elif st == 'cancelled' %} bg-red-100 text-red-800
+              {% else %} bg-yellow-100 text-yellow-800 {% endif %}">{{ st.replace('_',' ') }}</span>
+          </td>
+          <td class="py-2 px-2 text-right whitespace-nowrap">
+            <a href="/app/bookings/{{ b.id }}/edit" class="px-2 py-1 text-blue-700 hover:underline">Edit</a>
+            <form method="post" action="/app/bookings/{{ b.id }}/delete" class="inline" onsubmit="return confirm('Delete this booking?');">
+              <button class="px-2 py-1 text-red-700 hover:underline">Delete</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+    <p class="text-sm text-gray-600">No bookings yet.</p>
+  {% endif %}
+</div>
+{% endblock %}
