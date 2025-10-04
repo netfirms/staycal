@@ -43,6 +43,31 @@ StayCal is a calendar-first, multi-tenant room management and booking web applic
 - Database: PostgreSQL storing users, subscriptions, homestays, rooms, bookings.
 - Deployment: Hosted on Railway (app + PostgreSQL service).
 
+Mermaid diagram:
+
+```mermaid
+flowchart LR
+  subgraph Client
+    A[Browser\nHTML + CSS + HTMX]
+  end
+
+  subgraph Railway[Railway Deployment]
+    subgraph App[FastAPI Monolith]
+      B[FastAPI Routers\n- public_views\n- auth_views\n- app_views\n- calendar_htmx_views\n- admin_views]
+      C[Jinja2 Templates\nSSR + HTMX partials]
+      D[Security\nSession cookie]
+      E[SQLAlchemy ORM]
+    end
+
+    F[(PostgreSQL)]
+  end
+
+  A -- HTMX requests (GET/POST) --> B
+  B -- Render --> C
+  B -- Query/Commit --> E
+  E -- Connection --> F
+```
+
 ---
 
 ## 4. Detailed Architecture & Component Breakdown
@@ -148,6 +173,57 @@ Relationships:
 - Owner user has one Homestay and one Subscription.
 - Homestay has many Rooms and many Users (staff).
 - Room has many Bookings.
+
+Mermaid ER diagram:
+
+```mermaid
+erDiagram
+  USERS ||--o{ HOMESTAYS : "owns"
+  USERS ||--o{ SUBSCRIPTIONS : "has"
+  HOMESTAYS ||--o{ ROOMS : "contains"
+  HOMESTAYS ||--o{ USERS : "staff_of"
+  ROOMS ||--o{ BOOKINGS : "has"
+
+  USERS {
+    int id PK
+    varchar email UNIQUE
+    varchar hashed_password
+    varchar role
+    int homestay_id FK
+    timestamp created_at
+  }
+  SUBSCRIPTIONS {
+    int id PK
+    int owner_id FK UNIQUE
+    enum plan_name
+    enum status
+    timestamp expires_at
+  }
+  HOMESTAYS {
+    int id PK
+    int owner_id FK
+    varchar name
+    varchar address
+    timestamp created_at
+  }
+  ROOMS {
+    int id PK
+    int homestay_id FK
+    varchar name
+    int capacity
+    decimal default_rate
+  }
+  BOOKINGS {
+    int id PK
+    int room_id FK
+    varchar guest_name
+    varchar guest_contact
+    date start_date
+    date end_date
+    decimal price
+    enum status
+  }
+```
 
 Booking conflict rule:
 
