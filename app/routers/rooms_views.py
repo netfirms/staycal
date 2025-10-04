@@ -35,7 +35,7 @@ def rooms_create(request: Request, name: str = Form(...), capacity: int = Form(2
     if not user:
         return RedirectResponse(url="/auth/login", status_code=303)
     if not user.homestay_id:
-        return HTMLResponse("<div>Please create/select a homestay first.</div>", status_code=400)
+        return HTMLResponse("<div>Please create/select a property first.</div>", status_code=400)
     room = Room(homestay_id=user.homestay_id, name=name.strip(), capacity=capacity, default_rate=default_rate)
     db.add(room)
     db.commit()
