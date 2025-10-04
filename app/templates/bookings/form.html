@@ -45,6 +45,10 @@
         {% endfor %}
       </select>
     </div>
+    <div class="md:col-span-2">
+      <label class="block text-sm font-medium">Notes / Remark</label>
+      <textarea name="comment" rows="4" class="border rounded w-full p-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Any special requests, arrival time, etc.">{{ booking.comment if booking else '' }}</textarea>
+    </div>
     <div class="md:col-span-2 flex items-center gap-2">
       <a href="/app/bookings/" class="px-3 py-2 border rounded">Cancel</a>
       <button class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Save</button>

@@ -57,7 +57,7 @@ def booking_new(request: Request, room_id: int, start_date: str, end_date: str, 
     return templates.TemplateResponse("calendar/booking_modal.html", {"request": request, "room_id": room_id, "start_date": start_date, "end_date": end_date, "default_rate": default_rate})
 
 @router.post("/booking/save", response_class=HTMLResponse)
-def booking_save(request: Request, db: Session = Depends(get_db), room_id: int = Form(...), guest_name: str = Form(...), guest_contact: str = Form(""), start_date: str = Form(...), end_date: str = Form(...), price: float = Form(0.0),):
+def booking_save(request: Request, db: Session = Depends(get_db), room_id: int = Form(...), guest_name: str = Form(...), guest_contact: str = Form(""), start_date: str = Form(...), end_date: str = Form(...), price: float = Form(0.0), comment: str = Form("") ):
     uid = get_current_user_id(request)
     if not uid:
         return HTMLResponse("<div>Please login</div>", status_code=401)
@@ -67,7 +67,7 @@ def booking_save(request: Request, db: Session = Depends(get_db), room_id: int =
     conflicts = db.query(Booking).filter(Booking.room_id == room_id, Booking.start_date < e, Booking.end_date > s).all()
     if conflicts:
         return HTMLResponse("<div class='text-red-600 p-2'>Conflict: dates overlap existing booking.</div>", status_code=400)
-    booking = Booking(room_id=room_id, guest_name=guest_name, guest_contact=guest_contact, start_date=s, end_date=e, price=price, status=BookingStatus.CONFIRMED)
+    booking = Booking(room_id=room_id, guest_name=guest_name, guest_contact=guest_contact, start_date=s, end_date=e, price=price, status=BookingStatus.CONFIRMED, comment=comment.strip() or None)
     db.add(booking)
     db.commit()
     # Inform HTMX/JS listeners so calendars can refresh

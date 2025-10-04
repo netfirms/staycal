@@ -1,6 +1,6 @@
 from datetime import date
 from enum import Enum as PyEnum
-from sqlalchemy import Integer, String, ForeignKey, Date, Numeric, Enum
+from sqlalchemy import Integer, String, ForeignKey, Date, Numeric, Enum, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from ..db import Base
 
@@ -22,6 +22,7 @@ class Booking(Base):
     end_date: Mapped[date] = mapped_column(Date, nullable=False, index=True)
     price: Mapped[float | None] = mapped_column(Numeric(10,2), nullable=True)
     status: Mapped[BookingStatus] = mapped_column(Enum(BookingStatus), default=BookingStatus.TENTATIVE, nullable=False)
+    comment: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     room: Mapped["Room"] = relationship(back_populates="bookings")
 
