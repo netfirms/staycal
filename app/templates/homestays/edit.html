@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 {% block content %}
-<h1 class="text-2xl font-semibold mb-4">{{ 'Edit Homestay' if homestay else 'New Homestay' }}</h1>
+<h1 class="text-2xl font-semibold mb-4">{{ 'Edit Property' if homestay else 'New Property' }}</h1>
 
 <form method="post" action="{{ '/app/homestays/' + homestay.id|string + '/edit' if homestay else '/app/homestays/' }}" class="bg-white p-4 rounded-xl shadow-sm border space-y-3 max-w-xl">
   <div>

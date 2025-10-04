@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="description" content="StayCal — calendar-first room & booking management for small homestays." />
+  <meta name="description" content="StayCal — calendar-first room & booking management for small properties." />
   <meta name="theme-color" content="#2563eb" />
   <title>{{ title or 'StayCal' }}</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%232566eb'/%3E%3Ctext x='50' y='62' text-anchor='middle' font-size='56' fill='white' font-family='sans-serif'%3E📅%3C/text%3E%3C/svg%3E" />
@@ -23,7 +23,7 @@
         {% if user %}
           <a href="/app" class="px-3 py-1.5 text-sm rounded hover:bg-gray-100">Dashboard</a>
           <a href="/app/overview" class="hidden sm:inline px-3 py-1.5 text-sm rounded hover:bg-gray-100">Overview</a>
-          <a href="/app/homestays/" class="hidden sm:inline px-3 py-1.5 text-sm rounded hover:bg-gray-100">Homestays</a>
+          <a href="/app/homestays/" class="hidden sm:inline px-3 py-1.5 text-sm rounded hover:bg-gray-100">Properties</a>
           <a href="/app/rooms/" class="hidden sm:inline px-3 py-1.5 text-sm rounded hover:bg-gray-100">Rooms</a>
           <a href="/app/bookings/" class="hidden sm:inline px-3 py-1.5 text-sm rounded hover:bg-gray-100">Bookings</a>
           {% if user.role == 'admin' %}

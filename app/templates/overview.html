@@ -4,7 +4,7 @@
 
 <div class="mb-4 flex flex-wrap gap-2 items-center">
   <a href="/app" class="bg-white border px-3 py-2 rounded">Dashboard</a>
-  <a href="/app/homestays/" class="bg-white border px-3 py-2 rounded">Homestays</a>
+  <a href="/app/homestays/" class="bg-white border px-3 py-2 rounded">Properties</a>
   <a href="/app/rooms/" class="bg-white border px-3 py-2 rounded">Rooms</a>
   <a href="/app/bookings/" class="bg-white border px-3 py-2 rounded">Bookings</a>
   <form method="get" action="/app/overview" class="ml-auto flex flex-wrap items-end gap-2 bg-white border rounded p-2">
@@ -25,7 +25,7 @@
 
 {% if active %}
 <div class="bg-white p-4 rounded shadow mb-6">
-  <h2 class="font-medium mb-2">Active Homestay</h2>
+  <h2 class="font-medium mb-2">Active Property</h2>
   {% if period_start or period_end %}
     <div class="text-xs text-gray-600 mb-2">Showing: {{ period_start.isoformat() if period_start else '...' }} to {{ period_end.isoformat() if period_end else '...' }}</div>
   {% else %}
@@ -87,7 +87,7 @@
 
 <div class="grid lg:grid-cols-2 gap-6">
   <div class="bg-white p-4 rounded shadow">
-    <h2 class="font-medium mb-2">Your Homestays</h2>
+    <h2 class="font-medium mb-2">Your Properties</h2>
     {% if owned %}
       <table class="w-full text-sm">
         <thead>
@@ -119,12 +119,12 @@
         </tbody>
       </table>
     {% else %}
-      <p class="text-sm text-gray-600">You don't own any homestays yet.</p>
+      <p class="text-sm text-gray-600">You don't own any properties yet.</p>
     {% endif %}
   </div>
 
   <div class="bg-white p-4 rounded shadow">
-    <h2 class="font-medium mb-2">Rooms by Homestay</h2>
+    <h2 class="font-medium mb-2">Rooms by Property</h2>
     {% if hs_blocks %}
       <div class="space-y-3">
         {% for block in hs_blocks %}

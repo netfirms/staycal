@@ -1,9 +1,9 @@
 {% extends 'base.html' %}
 {% block content %}
-<h1 class="text-2xl font-semibold mb-4">Homestays</h1>
+<h1 class="text-2xl font-semibold mb-4">Properties</h1>
 
 <div class="bg-white p-4 rounded-xl shadow-sm border mb-6">
-  <h2 class="font-medium mb-3">Create Homestay</h2>
+  <h2 class="font-medium mb-3">Create Property</h2>
   <form method="post" action="/app/homestays/" class="grid md:grid-cols-3 gap-3">
     <div>
       <label class="block text-sm font-medium">Name</label>
@@ -22,7 +22,7 @@
 
 <div class="grid md:grid-cols-2 gap-4">
   <div class="bg-white p-4 rounded-xl shadow-sm border">
-    <h2 class="font-medium mb-2">Your Homestays</h2>
+    <h2 class="font-medium mb-2">Your Properties</h2>
     {% if owned %}
     <ul class="divide-y">
       {% for h in owned %}
@@ -37,7 +37,7 @@
             <button class="px-3 py-1.5 text-sm border rounded hover:bg-gray-50">Set Active</button>
           </form>
           <a href="/app/homestays/{{ h.id }}/edit" class="px-3 py-1.5 text-sm border rounded hover:bg-gray-50">Edit</a>
-          <form method="post" action="/app/homestays/{{ h.id }}/delete" onsubmit="return confirm('Delete this homestay? Rooms and bookings will be removed.');">
+          <form method="post" action="/app/homestays/{{ h.id }}/delete" onsubmit="return confirm('Delete this property? Rooms and bookings will be removed.');">
             <button class="px-3 py-1.5 text-sm border rounded text-red-700 hover:bg-red-50">Delete</button>
           </form>
         </div>
@@ -45,7 +45,7 @@
       {% endfor %}
     </ul>
     {% else %}
-      <p class="text-sm text-gray-600">No homestays yet. Create one above.</p>
+      <p class="text-sm text-gray-600">No properties yet. Create one above.</p>
     {% endif %}
   </div>
 
@@ -64,7 +64,7 @@
         </div>
       </div>
     {% else %}
-      <p class="text-sm text-gray-600">No active homestay selected.</p>
+      <p class="text-sm text-gray-600">No active property selected.</p>
     {% endif %}
   </div>
 </div>
