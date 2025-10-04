@@ -1,6 +1,6 @@
-# StayCal — Homestay Room & Booking Management (Up-to-date Overview)
+# StayCal — Property Room & Booking Management (Up-to-date Overview)
 
-StayCal is a calendar-first, multi-tenant room management and booking web application designed for small homestays, guesthouses, and B&Bs. The philosophy is simplicity, affordability, and a powerful, visually-driven calendar interface. This README reflects the current implemented codebase and how to run and deploy it.
+StayCal is a calendar-first, multi-tenant room management and booking web application designed for small properties, guesthouses, and B&Bs. The philosophy is simplicity, affordability, and a powerful, visually-driven calendar interface. This README reflects the current implemented codebase and how to run and deploy it.
 
 ---
 
@@ -26,8 +26,8 @@ StayCal is a calendar-first, multi-tenant room management and booking web applic
   - Secure, server-signed cookie stored in the browser.
 
 - Dashboard (/app)
-  - Onboarding stepper to guide Homestay → Rooms → Booking.
-  - Today’s operational widgets: incoming Check-ins and Check-outs for the active homestay.
+  - Onboarding stepper to guide Property → Rooms → Booking.
+  - Today’s operational widgets: incoming Check-ins and Check-outs for the active property.
   - FullCalendar per-room calendar with event colors by status and quick selection to create bookings.
 
 - Calendar & Bookings
@@ -50,13 +50,13 @@ StayCal is a calendar-first, multi-tenant room management and booking web applic
   - Price and all money values displayed as THB with thousand separators (e.g., ฿1,234.00).
 
 - Overview (/app/overview)
-  - Stats per homestay: nights, bookings count, profit (sum of booking prices), rooms count.
-  - Today’s counts per homestay: Check-ins Today, Check-outs Today.
-  - Upcoming Check-ins list for the active homestay.
+  - Stats per property: nights, bookings count, profit (sum of booking prices), rooms count.
+  - Today’s counts per property: Check-ins Today, Check-outs Today.
+  - Upcoming Check-ins list for the active property.
   - Period-based stats filter (start/end). Defaults to current month if no period provided.
 
 - Admin
-  - /admin shows lists of Users, Homestays, Subscriptions for admin users.
+  - /admin shows lists of Users, Properties, Subscriptions for admin users.
   - /admin/plans lets admins assign or update a user's subscription (plan, status, expiry).
 
 ---
@@ -178,12 +178,15 @@ Core tables and fields:
   - end_date (date)
   - price (decimal)
   - status (tentative | confirmed | checked_in | checked_out | cancelled)
+  - comment (text, optional)
 
 Relationships:
 
-- Owner user has one or more Homestays and one Subscription.
-- Homestay has many Rooms and many Users (staff via users.homestay_id).
+- Owner user has one or more Properties (stored in the homestays table) and one Subscription.
+- Property has many Rooms and many Users (staff via users.homestay_id).
 - Room has many Bookings.
+
+Note on terminology: The UI uses “Property” throughout, while the database/table/model are named Homestay for historical reasons.
 
 Mermaid ER diagram:
 
@@ -297,7 +300,7 @@ Environment variables (.env):
 
 Initial user journey:
 - Visit / → click Register to create an account.
-- Go to /app/homestays/ → create a Homestay and set it active.
+- Go to /app/homestays/ → create a Property and set it active.
 - Go to /app/rooms/ → add rooms (optionally set default_rate).
 - Go to /app → use the calendar to select dates and create bookings.
 - Manage Bookings at /app/bookings/; edit status, dates, price, etc.
@@ -327,6 +330,7 @@ CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "${PORT}"]
 ## 9. Notes & Limitations (MVP)
 
 - Tables are auto-created on startup (Base.metadata.create_all). Use Alembic migrations for production changes.
+- Lightweight startup migration: ensure_mvp_schema() adds the bookings.comment column to existing databases (SQLite/Postgres) when missing.
 - No payment gateway is implemented; subscriptions are modeled but not enforced.
 - Admin panel is minimal and intended for demonstration/testing.
 - Email/notifications are not implemented.
