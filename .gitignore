@@ -1,0 +1,101 @@
+# Python byte-compiled/optimized files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Environment files (keep example)
+.env
+.env.*
+!.env.example
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+
+# Type checkers / linters cache
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pyre/
+.pytype/
+.ruff_cache/
+
+# Logs
+*.log
+uvicorn.log
+
+# Databases
+*.sqlite3
+*.sqlite
+*.db
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# IDE/editor settings
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Node/Tailwind (if used later)
+node_modules/
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+app/static/build/
+app/static/dist/
+
+# Local tooling
+/.junie/

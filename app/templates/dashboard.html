@@ -1,0 +1,22 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1 class="text-xl font-semibold mb-4">Dashboard</h1>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+  <div class="bg-white p-4 rounded shadow">
+    <h2 class="font-medium mb-2">Rooms</h2>
+    {% if rooms %}
+      <ul class="list-disc pl-5">
+        {% for r in rooms %}
+          <li class="mb-1">{{ r.name }} (cap {{ r.capacity }})
+            <div class="mt-2">
+              <div id="cal-{{ r.id }}" hx-get="/htmx/calendar/view?year={{ today.year }}&month={{ today.month }}&room_id={{ r.id }}" hx-trigger="load" hx-target="#cal-{{ r.id }}" hx-swap="innerHTML"></div>
+            </div>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p>No rooms yet. (Room management CRUD not included in this MVP scaffold.)</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

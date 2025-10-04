@@ -1,0 +1,13 @@
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+class Settings:
+    APP_NAME: str = "StayCal"
+    SECRET_KEY: str = os.getenv("SECRET_KEY", "dev-secret-key-change-me")
+    SESSION_COOKIE_NAME: str = os.getenv("SESSION_COOKIE_NAME", "staycal_session")
+    DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:///./staycal.db")
+    DEBUG: bool = os.getenv("DEBUG", "false").lower() == "true"
+
+settings = Settings()

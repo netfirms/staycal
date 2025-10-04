@@ -1,0 +1,29 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{{ title or 'StayCal' }}</title>
+  <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 text-gray-900">
+  <nav class="bg-white border-b px-4 py-3 flex items-center justify-between">
+    <a href="/" class="font-semibold text-lg">StayCal</a>
+    <div class="flex items-center gap-4">
+      {% if user %}
+      <a href="/app" class="text-sm text-gray-600 hover:text-gray-900">Dashboard</a>
+      <form method="post" action="/auth/logout">
+        <button class="text-sm text-gray-600 hover:text-gray-900">Logout</button>
+      </form>
+      {% else %}
+      <a href="/auth/login" class="text-sm text-gray-600 hover:text-gray-900">Login</a>
+      <a href="/auth/register" class="text-sm text-gray-600 hover:text-gray-900">Register</a>
+      {% endif %}
+    </div>
+  </nav>
+  <main class="p-4">
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

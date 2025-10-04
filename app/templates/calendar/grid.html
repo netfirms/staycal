@@ -1,0 +1,33 @@
+<div class="border rounded overflow-hidden">
+  <div class="grid" style="grid-template-columns: repeat({{ days }}, minmax(2rem, 1fr));">
+    {% for d in range(1, days+1) %}
+      <div class="text-center text-xs bg-gray-100 border-b p-1">{{ d }}</div>
+    {% endfor %}
+    {% set month_str = "%02d"|format(month) %}
+    {% for d in range(1, days+1) %}
+      {% set d_str = "%02d"|format(d) %}
+      {% set next_d_str = "%02d"|format(d+1 if d < days else d) %}
+      {% set day_str = (year|string) + '-' + month_str + '-' + d_str %}
+      {% set has_booking = False %}
+      {% for b in bookings %}
+        {% if day_str >= b.start_date.isoformat() and day_str < b.end_date.isoformat() %}
+          {% set has_booking = True %}
+          {% set color = 'bg-yellow-300' %}
+          {% if b.status.value == 'confirmed' %}{% set color = 'bg-green-300' %}{% endif %}
+          {% if b.status.value == 'checked_in' %}{% set color = 'bg-blue-300' %}{% endif %}
+          {% if b.status.value == 'checked_out' %}{% set color = 'bg-gray-300' %}{% endif %}
+          <div class="text-center text-xs {{ color }} border-b p-1">{{ b.guest_name }}</div>
+        {% endif %}
+      {% endfor %}
+      {% if not has_booking %}
+        <div class="text-center text-xs border-b p-1 hover:bg-gray-50 cursor-pointer"
+             hx-get='/htmx/booking/new?room_id={{ room_id }}&start_date={{ year }}-{{ month_str }}-{{ d_str }}&end_date={{ year }}-{{ month_str }}-{{ next_d_str }}'
+             hx-target="#modal"
+             hx-swap="innerHTML">
+          +
+        </div>
+      {% endif %}
+    {% endfor %}
+  </div>
+</div>
+<div id="modal"></div>

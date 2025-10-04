@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="max-w-5xl mx-auto py-16">
+  <div class="text-center">
+    <h1 class="text-4xl font-bold mb-4">StayCal — Simple Calendar-First Booking Management</h1>
+    <p class="text-lg text-gray-600 mb-8">Built for small homestays, guesthouses, and B&Bs. See availability at a glance, manage bookings with ease.</p>
+    <div class="flex gap-4 justify-center">
+      <a href="/auth/register" class="px-6 py-3 bg-blue-600 text-white rounded hover:bg-blue-700">Get Started Free</a>
+      <a href="/auth/login" class="px-6 py-3 bg-white border rounded hover:bg-gray-50">Sign In</a>
+    </div>
+  </div>
+
+  <div class="grid md:grid-cols-3 gap-6 mt-16">
+    <div class="bg-white p-6 rounded shadow-sm">
+      <h3 class="font-semibold mb-2">Calendar-First</h3>
+      <p class="text-gray-600">Visual grid with rooms and dates. Create and update bookings directly from the calendar.</p>
+    </div>
+    <div class="bg-white p-6 rounded shadow-sm">
+      <h3 class="font-semibold mb-2">No Double-Booking</h3>
+      <p class="text-gray-600">Automatic conflict detection prevents overlapping bookings for the same room.</p>
+    </div>
+    <div class="bg-white p-6 rounded shadow-sm">
+      <h3 class="font-semibold mb-2">Multi-Tenant & Affordable</h3>
+      <p class="text-gray-600">Serve multiple properties with low operational cost and simple subscription tiers.</p>
+    </div>
+  </div>
+
+  <div class="mt-16 text-center text-sm text-gray-500">
+    <p>StayCal MVP — Deployed on Railway. FastAPI + HTMX + Tailwind.</p>
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1 class="text-xl font-semibold mb-4">Admin</h1>
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+  <div class="bg-white p-4 rounded shadow">
+    <h2 class="font-medium mb-2">Users</h2>
+    <ul class="list-disc pl-5">
+      {% for u in users %}
+        <li>{{ u.email }} — {{ u.role }}</li>
+      {% endfor %}
+    </ul>
+  </div>
+  <div class="bg-white p-4 rounded shadow">
+    <h2 class="font-medium mb-2">Homestays</h2>
+    <ul class="list-disc pl-5">
+      {% for h in homestays %}
+        <li>{{ h.name }} — Owner ID {{ h.owner_id }}</li>
+      {% endfor %}
+    </ul>
+  </div>
+  <div class="bg-white p-4 rounded shadow">
+    <h2 class="font-medium mb-2">Subscriptions</h2>
+    <ul class="list-disc pl-5">
+      {% for s in subs %}
+        <li>Owner {{ s.owner_id }} — {{ s.plan_name.value }} ({{ s.status.value }})</li>
+      {% endfor %}
+    </ul>
+  </div>
+</div>
+{% endblock %}
