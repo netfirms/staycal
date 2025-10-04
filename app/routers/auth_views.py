@@ -14,19 +14,20 @@ def login_form(request: Request):
     return templates.TemplateResponse("auth/login.html", {"request": request})
 
 @router.post("/login")
-def login(request: Request, response: Response, email: str = Form(...), password: str = Form(...), db: Session = Depends(get_db)):
+def login(request: Request, email: str = Form(...), password: str = Form(...), db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == email).first()
     if not user or not verify_password(password, user.hashed_password):
         raise HTTPException(status_code=400, detail="Invalid credentials")
-    set_session(response, user.id)
-    return RedirectResponse(url="/app", status_code=303)
+    redirect = RedirectResponse(url="/app", status_code=303)
+    set_session(redirect, user.id)
+    return redirect
 
 @router.get("/register", response_class=HTMLResponse)
 def register_form(request: Request):
     return templates.TemplateResponse("auth/register.html", {"request": request})
 
 @router.post("/register")
-def register(response: Response, email: str = Form(...), password: str = Form(...), db: Session = Depends(get_db)):
+def register(email: str = Form(...), password: str = Form(...), db: Session = Depends(get_db)):
     exists = db.query(User).filter(User.email == email).first()
     if exists:
         raise HTTPException(status_code=400, detail="Email already registered")
@@ -34,10 +35,12 @@ def register(response: Response, email: str = Form(...), password: str = Form(..
     db.add(user)
     db.commit()
     db.refresh(user)
-    set_session(response, user.id)
-    return RedirectResponse(url="/app", status_code=303)
+    redirect = RedirectResponse(url="/app", status_code=303)
+    set_session(redirect, user.id)
+    return redirect
 
 @router.post("/logout")
-def logout(response: Response):
-    clear_session(response)
-    return RedirectResponse(url="/auth/login", status_code=303)
+def logout():
+    redirect = RedirectResponse(url="/auth/login", status_code=303)
+    clear_session(redirect)
+    return redirect

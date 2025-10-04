@@ -16,7 +16,7 @@ app.include_router(calendar_htmx_views.router)
 app.include_router(admin_views.router)
 
 # Static (placeholder)
-app.mount("/static", StaticFiles(directory="app/static"), name="static")
+app.mount("/static", StaticFiles(directory="app/static", check_dir=False), name="static")
 
 @app.get("/healthz")
 def healthz():

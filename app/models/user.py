@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Optional
 from sqlalchemy import Integer, String, ForeignKey, DateTime, Enum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from ..db import Base
@@ -18,5 +19,10 @@ class User(Base):
     homestay_id: Mapped[int | None] = mapped_column(ForeignKey("homestays.id"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
-    homestay: Mapped["Homestay" | None] = relationship(back_populates="users")
+    # User is staff/member of a homestay via users.homestay_id -> homestays.id
+    homestay: Mapped[Optional["Homestay"]] = relationship(back_populates="users", foreign_keys=[homestay_id])
+
+    # Owner relationship: a user may own one or more homestays via homestays.owner_id -> users.id
+    homestays_owned: Mapped[list["Homestay"]] = relationship(back_populates="owner", foreign_keys="Homestay.owner_id")
+
     subscriptions: Mapped[list["Subscription"]] = relationship(back_populates="owner", cascade="all, delete-orphan")

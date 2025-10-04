@@ -12,6 +12,10 @@ class Homestay(Base):
     address: Mapped[str] = mapped_column(String(300), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
-    owner: Mapped["User"] = relationship(back_populates="homestay", foreign_keys=[owner_id])
+    # Owner of the homestay via homestays.owner_id -> users.id
+    owner: Mapped["User"] = relationship(back_populates="homestays_owned", foreign_keys=[owner_id])
+
     rooms: Mapped[list["Room"]] = relationship(back_populates="homestay", cascade="all, delete-orphan")
-    users: Mapped[list["User"]] = relationship(back_populates="homestay")
+
+    # Users (staff) assigned to this homestay via users.homestay_id -> homestays.id
+    users: Mapped[list["User"]] = relationship(back_populates="homestay", foreign_keys="User.homestay_id")

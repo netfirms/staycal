@@ -1,7 +1,7 @@
 from datetime import datetime
 from enum import Enum as PyEnum
-from sqlalchemy import Integer, String, ForeignKey, DateTime, Enum
-from sqlalchemy.orm import Mapped, mapped_column, relationship, UniqueConstraint
+from sqlalchemy import Integer, String, ForeignKey, DateTime, Enum, UniqueConstraint
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from ..db import Base
 
 class PlanName(str, PyEnum):
