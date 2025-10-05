@@ -662,3 +662,28 @@ Docker/Railway:
 
 Fallback safety:
 - The application still executes a lightweight best-effort schema check in `ensure_mvp_schema()` for extra resilience in dev environments; Alembic is the primary mechanism for production.
+
+
+
+## Local Development with Docker Compose
+
+You can run StayCal locally with Docker Compose using PostgreSQL.
+
+Prerequisites:
+- Docker Desktop (or docker + docker compose plugin)
+
+Steps:
+1. Start the stack (app + PostgreSQL):
+   - docker compose up --build
+2. Open the app:
+   - http://localhost:8000
+3. Stop the stack:
+   - docker compose down
+
+Notes:
+- The database connection is provided via DATABASE_URL in docker-compose.yml: postgresql+psycopg://staycal:staycal@db:5432/staycal
+- Alembic migrations run automatically on container start (best-effort). The app also has a lightweight schema ensure for resilience.
+- Source code is mounted into the web container (./ -> /app) and Uvicorn runs with --reload for live code reload.
+- PostgreSQL data is persisted in a local named volume pgdata. To wipe local DB data, run: docker compose down -v
+- To use Cloudinary in Compose, set CLOUDINARY_URL in docker-compose.yml or pass it via an env file.
+- If you prefer using an .env file, you can uncomment the Compose DATABASE_URL example in .env.example and use `--env-file` with Docker Compose.

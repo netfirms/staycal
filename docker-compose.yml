@@ -1,0 +1,41 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: staycal_db
+    environment:
+      POSTGRES_USER: staycal
+      POSTGRES_PASSWORD: staycal
+      POSTGRES_DB: staycal
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U staycal -d staycal"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  web:
+    build: .
+    container_name: staycal_web
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      # FastAPI app reads these from the environment
+      DATABASE_URL: postgresql+psycopg://staycal:staycal@db:5432/staycal
+      SECRET_KEY: dev-secret-key-change-me
+      # Optional: enable Cloudinary by setting your URL here or via `docker compose --env-file`
+      # CLOUDINARY_URL: "cloudinary://<api_key>:<api_secret>@<cloud_name>"
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./:/app
+    command: /bin/sh -c "alembic upgrade head || true; uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
+
+volumes:
+  pgdata:
+    driver: local

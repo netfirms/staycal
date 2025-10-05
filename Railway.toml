@@ -1,0 +1,30 @@
+# Railway deployment configuration for StayCal
+# Docs: https://docs.railway.app/deploy/config-as-code
+
+[project]
+name = "staycal"
+
+[build]
+# Use the repo's Dockerfile for builds
+builder = "DOCKERFILE"
+
+[deploy]
+# Uvicorn app exposes a simple health endpoint
+healthcheckPath = "/healthz"
+# seconds
+healthcheckTimeout = 100
+# Restart the container on failure
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3
+
+[service]
+# Single web service (Dockerfile CMD defines the start command)
+name = "web"
+
+[variables]
+# Railway sets PORT automatically, but set a sane default for local/other envs
+PORT = "8000"
+# The following should be configured in Railway → Variables UI:
+# - DATABASE_URL (provided by Railway Postgres service)
+# - SECRET_KEY (set a strong random value)
+# - CLOUDINARY_URL (optional; enable Cloudinary uploads)
