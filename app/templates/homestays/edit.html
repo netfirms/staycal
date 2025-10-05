@@ -2,7 +2,7 @@
 {% block content %}
 <h1 class="text-2xl font-semibold mb-4">{{ 'Edit Property' if homestay else 'New Property' }}</h1>
 
-<form method="post" action="{{ '/app/homestays/' + homestay.id|string + '/edit' if homestay else '/app/homestays/' }}" class="bg-white p-4 rounded-xl shadow-sm border space-y-3 max-w-xl">
+<form method="post" action="{{ '/app/homestays/' + homestay.id|string + '/edit' if homestay else '/app/homestays/' }}" class="bg-white p-4 rounded-xl shadow-sm border space-y-3 max-w-xl" enctype="multipart/form-data">
   <div>
     <label class="block text-sm font-medium">Name</label>
     <input name="name" class="border rounded w-full p-2 focus:outline-none focus:ring-2 focus:ring-blue-500" value="{{ homestay.name if homestay else '' }}" required />
@@ -10,6 +10,13 @@
   <div>
     <label class="block text-sm font-medium">Address</label>
     <input name="address" class="border rounded w-full p-2 focus:outline-none focus:ring-2 focus:ring-blue-500" value="{{ homestay.address if homestay else '' }}" />
+  </div>
+  <div>
+    <label class="block text-sm font-medium">Image</label>
+    {% if homestay and homestay.image_url %}
+      <img src="{{ homestay.image_url }}" alt="{{ homestay.name }}" class="h-24 w-24 object-cover rounded mb-2" />
+    {% endif %}
+    <input name="image" type="file" accept="image/*" class="border rounded w-full p-2" />
   </div>
   <div class="flex gap-2">
     <a href="/app/homestays/" class="px-4 py-2 border rounded">Cancel</a>

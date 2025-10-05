@@ -1,0 +1,36 @@
+<div class="fixed inset-0 bg-black/40 flex items-center justify-center z-50" role="dialog" aria-modal="true" onclick="(function(e){ if(e.target === e.currentTarget){ document.body.classList.remove('overflow-hidden'); document.getElementById('modal').innerHTML=''; } })(event)">
+  <div class="bg-white rounded-xl shadow-lg p-4 w-full max-w-md border" onclick="event.stopPropagation();">
+    <h3 class="font-semibold mb-2">Edit Dates</h3>
+    <form hx-post="/htmx/booking/update-dates" hx-target="#modal" hx-swap="outerHTML" class="space-y-3">
+      <input type="hidden" name="booking_id" value="{{ booking.id }}" />
+      <div class="grid grid-cols-2 gap-2">
+        <div>
+          <label class="block text-sm font-medium">Start</label>
+          <input type="date" name="start_date" value="{{ booking.start_date.isoformat() }}" class="border rounded w-full p-2 focus:outline-none focus:ring-2 focus:ring-blue-500" required />
+        </div>
+        <div>
+          <label class="block text-sm font-medium">End</label>
+          <input type="date" name="end_date" value="{{ booking.end_date.isoformat() }}" class="border rounded w-full p-2 focus:outline-none focus:ring-2 focus:ring-blue-500" required />
+        </div>
+      </div>
+      <p class="text-xs text-gray-500">Tip: End date is the check-out date.</p>
+      <div class="flex gap-2 justify-end">
+        <button type="button" class="px-3 py-2 border rounded" onclick="document.body.classList.remove('overflow-hidden'); document.getElementById('modal').innerHTML=''">Cancel</button>
+        <button class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Save</button>
+      </div>
+    </form>
+  </div>
+  <script>
+    (function(){
+      try { document.body.classList.add('overflow-hidden'); } catch(_){ }
+      function onKey(e){ if(e.key === 'Escape'){ try { document.body.classList.remove('overflow-hidden'); } catch(_){}; var m=document.getElementById('modal'); if(m){ m.innerHTML=''; } } }
+      document.addEventListener('keydown', onKey);
+      const observer = new MutationObserver(function(){ var m=document.getElementById('modal'); if(m && m.innerHTML.trim()===''){ document.removeEventListener('keydown', onKey); observer.disconnect(); } });
+      observer.observe(document.getElementById('modal'), { childList: true });
+      // listen for HX-Trigger to refresh visible calendars if desired
+      document.body.addEventListener('htmx:afterOnLoad', function(ev){
+        // if the server triggered bookingUpdated, close modal handled by response
+      });
+    })();
+  </script>
+</div>

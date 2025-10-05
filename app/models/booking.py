@@ -23,6 +23,7 @@ class Booking(Base):
     price: Mapped[float | None] = mapped_column(Numeric(10,2), nullable=True)
     status: Mapped[BookingStatus] = mapped_column(Enum(BookingStatus), default=BookingStatus.TENTATIVE, nullable=False)
     comment: Mapped[str | None] = mapped_column(Text, nullable=True)
+    image_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
     room: Mapped["Room"] = relationship(back_populates="bookings")
 

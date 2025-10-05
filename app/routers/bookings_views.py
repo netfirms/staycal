@@ -1,5 +1,5 @@
 from datetime import date
-from fastapi import APIRouter, Depends, Request, Form
+from fastapi import APIRouter, Depends, Request, Form, UploadFile, File
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
@@ -7,6 +7,7 @@ from ..db import get_db
 from ..models import User, Room, Booking, BookingStatus
 from ..security import get_current_user_id
 from ..services.auto_checkout import run_auto_checkout
+from ..services.media import save_image
 
 router = APIRouter(prefix="/app/bookings", tags=["bookings"])
 templates = Jinja2Templates(directory="app/templates")
@@ -53,7 +54,7 @@ def bookings_new(request: Request, db: Session = Depends(get_db), room_id: int |
 
 
 @router.post("/new")
-def bookings_create(request: Request, db: Session = Depends(get_db), room_id: int = Form(...), guest_name: str = Form(...), guest_contact: str = Form(""), start_date: str = Form(...), end_date: str = Form(...), price: float | None = Form(None), status: str = Form(BookingStatus.CONFIRMED.value), comment: str = Form("") ):
+async def bookings_create(request: Request, db: Session = Depends(get_db), room_id: int = Form(...), guest_name: str = Form(...), guest_contact: str = Form(""), start_date: str = Form(...), end_date: str = Form(...), price: float | None = Form(None), status: str = Form(BookingStatus.CONFIRMED.value), comment: str = Form(""), image: UploadFile | None = File(None) ):
     user = require_user(request, db)
     if not user:
         return RedirectResponse(url="/auth/login", status_code=303)
@@ -65,7 +66,11 @@ def bookings_create(request: Request, db: Session = Depends(get_db), room_id: in
     conflicts = db.query(Booking).filter(Booking.room_id == room_id, Booking.start_date < e, Booking.end_date > s).all()
     if conflicts:
         return HTMLResponse("<div class='p-3 text-red-700'>Conflict: overlapping booking exists.</div>", status_code=400)
-    b = Booking(room_id=room_id, guest_name=guest_name.strip(), guest_contact=guest_contact.strip(), start_date=s, end_date=e, price=price, status=BookingStatus(status), comment=comment.strip() or None)
+    img_url = None
+    if image and image.filename:
+        data = await image.read()
+        img_url = save_image(data, image.filename, folder="staycal/bookings")
+    b = Booking(room_id=room_id, guest_name=guest_name.strip(), guest_contact=guest_contact.strip(), start_date=s, end_date=e, price=price, status=BookingStatus(status), comment=comment.strip() or None, image_url=img_url)
     db.add(b)
     db.commit()
     return RedirectResponse(url="/app/bookings/", status_code=303)
@@ -87,7 +92,7 @@ def bookings_edit_form(request: Request, booking_id: int, db: Session = Depends(
 
 
 @router.post("/{booking_id}/edit")
-def bookings_edit(request: Request, booking_id: int, db: Session = Depends(get_db), room_id: int = Form(...), guest_name: str = Form(...), guest_contact: str = Form(""), start_date: str = Form(...), end_date: str = Form(...), price: float | None = Form(None), status: str = Form(BookingStatus.CONFIRMED.value), comment: str = Form("") ):
+async def bookings_edit(request: Request, booking_id: int, db: Session = Depends(get_db), room_id: int = Form(...), guest_name: str = Form(...), guest_contact: str = Form(""), start_date: str = Form(...), end_date: str = Form(...), price: float | None = Form(None), status: str = Form(BookingStatus.CONFIRMED.value), comment: str = Form(""), image: UploadFile | None = File(None) ):
     user = require_user(request, db)
     if not user:
         return RedirectResponse(url="/auth/login", status_code=303)
@@ -110,6 +115,11 @@ def bookings_edit(request: Request, booking_id: int, db: Session = Depends(get_d
     b.price = price
     b.status = BookingStatus(status)
     b.comment = (comment.strip() or None)
+    if image and image.filename:
+        data = await image.read()
+        new_url = save_image(data, image.filename, folder="staycal/bookings")
+        if new_url:
+            b.image_url = new_url
     db.commit()
     return RedirectResponse(url="/app/bookings/", status_code=303)
 

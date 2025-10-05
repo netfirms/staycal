@@ -2,7 +2,7 @@
 {% block content %}
 <h1 class="text-2xl font-semibold mb-4">{{ 'New' if mode == 'new' else 'Edit' }} Booking</h1>
 <div class="bg-white p-4 rounded-xl shadow-sm border max-w-2xl">
-  <form method="post" action="{{ '/app/bookings/new' if mode == 'new' else '/app/bookings/' ~ booking.id ~ '/edit' }}" class="grid md:grid-cols-2 gap-4">
+  <form method="post" action="{{ '/app/bookings/new' if mode == 'new' else '/app/bookings/' ~ booking.id ~ '/edit' }}" class="grid md:grid-cols-2 gap-4" enctype="multipart/form-data">
     <div>
       <label class="block text-sm font-medium">Room</label>
       <select name="room_id" class="border rounded w-full p-2 focus:outline-none focus:ring-2 focus:ring-blue-500" required>
@@ -48,6 +48,13 @@
     <div class="md:col-span-2">
       <label class="block text-sm font-medium">Notes / Remark</label>
       <textarea name="comment" rows="4" class="border rounded w-full p-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Any special requests, arrival time, etc.">{{ booking.comment if booking else '' }}</textarea>
+    </div>
+    <div class="md:col-span-2">
+      <label class="block text-sm font-medium">Image</label>
+      {% if booking and booking.image_url %}
+        <img src="{{ booking.image_url }}" alt="Booking image" class="h-24 w-24 object-cover rounded mb-2" />
+      {% endif %}
+      <input name="image" type="file" accept="image/*" class="border rounded w-full p-2" />
     </div>
     <div class="md:col-span-2 flex items-center gap-2">
       <a href="/app/bookings/" class="px-3 py-2 border rounded">Cancel</a>

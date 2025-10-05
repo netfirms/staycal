@@ -1,13 +1,14 @@
 import calendar as cal
 from datetime import date
-from fastapi import APIRouter, Depends, Request, Form
+from fastapi import APIRouter, Depends, Request, Form, UploadFile, File
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from ..db import get_db
-from ..models import Booking, Room, BookingStatus
+from ..models import Booking, Room, BookingStatus, User
 from ..security import get_current_user_id
 from ..services.auto_checkout import run_auto_checkout
+from ..services.media import save_image
 
 router = APIRouter(prefix="/htmx", tags=["calendar"]) 
 templates = Jinja2Templates(directory="app/templates")
@@ -133,3 +134,153 @@ def update_status(request: Request, db: Session = Depends(get_db), booking_id: i
     b.status = BookingStatus(status)
     db.commit()
     return HTMLResponse("<div class='text-blue-700 p-2'>Status updated.</div>")
+
+@router.get("/booking/edit-dates", response_class=HTMLResponse)
+def booking_edit_dates(request: Request, booking_id: int, db: Session = Depends(get_db)):
+    uid = get_current_user_id(request)
+    if not uid:
+        return HTMLResponse("<div>Please login</div>", status_code=401)
+    b = db.query(Booking).get(booking_id)
+    if not b:
+        return HTMLResponse("<div>Not found</div>", status_code=404)
+    return templates.TemplateResponse(
+        "calendar/edit_dates_modal.html",
+        {
+            "request": request,
+            "booking": b,
+        },
+    )
+
+@router.post("/booking/update-dates", response_class=HTMLResponse)
+def booking_update_dates(
+    request: Request,
+    db: Session = Depends(get_db),
+    booking_id: int = Form(...),
+    start_date: str = Form(...),
+    end_date: str = Form(...),
+):
+    uid = get_current_user_id(request)
+    if not uid:
+        return HTMLResponse("<div>Please login</div>", status_code=401)
+    b = db.query(Booking).get(booking_id)
+    if not b:
+        return HTMLResponse("<div>Not found</div>", status_code=404)
+    try:
+        s = date.fromisoformat(start_date)
+        e = date.fromisoformat(end_date)
+    except Exception:
+        return HTMLResponse("<div class='text-red-700 p-2'>Invalid dates.</div>", status_code=400)
+    # normalize ensure start < end
+    if not (s < e):
+        return HTMLResponse("<div class='text-red-700 p-2'>End date must be after start date.</div>", status_code=400)
+    # conflict detection excluding self
+    conflicts = (
+        db.query(Booking)
+        .filter(
+            Booking.room_id == b.room_id,
+            Booking.id != b.id,
+            Booking.start_date < e,
+            Booking.end_date > s,
+        )
+        .all()
+    )
+    if conflicts:
+        return HTMLResponse("<div class='text-red-700 p-2'>Conflict: overlapping booking exists.</div>", status_code=400)
+    b.start_date = s
+    b.end_date = e
+    db.commit()
+    headers = {"HX-Trigger": "bookingUpdated"}
+    # Return empty modal container to close
+    return HTMLResponse("", headers=headers)
+
+
+@router.get("/booking/edit", response_class=HTMLResponse)
+def booking_edit(request: Request, booking_id: int, db: Session = Depends(get_db)):
+    uid = get_current_user_id(request)
+    if not uid:
+        return HTMLResponse("<div>Please login</div>", status_code=401)
+    b = db.query(Booking).get(booking_id)
+    if not b:
+        return HTMLResponse("<div>Not found</div>", status_code=404)
+    user = db.query(User).get(uid)
+    rooms = []
+    if user and user.homestay_id:
+        rooms = db.query(Room).filter(Room.homestay_id == user.homestay_id).order_by(Room.name.asc()).all()
+    return templates.TemplateResponse(
+        "calendar/edit_booking_modal.html",
+        {
+            "request": request,
+            "booking": b,
+            "rooms": rooms,
+            "BookingStatus": BookingStatus,
+        },
+    )
+
+
+@router.post("/booking/update", response_class=HTMLResponse)
+async def booking_update(
+    request: Request,
+    db: Session = Depends(get_db),
+    booking_id: int = Form(...),
+    room_id: int = Form(...),
+    guest_name: str = Form(...),
+    guest_contact: str = Form(""),
+    start_date: str = Form(...),
+    end_date: str = Form(...),
+    price: float | None = Form(None),
+    status: str = Form(BookingStatus.CONFIRMED.value),
+    comment: str = Form(""),
+    image: UploadFile | None = File(None),
+):
+    uid = get_current_user_id(request)
+    if not uid:
+        return HTMLResponse("<div>Please login</div>", status_code=401)
+    b = db.query(Booking).get(booking_id)
+    if not b:
+        return HTMLResponse("<div>Not found</div>", status_code=404)
+    user = db.query(User).get(uid)
+    # Validate room belongs to user's active homestay
+    room = db.query(Room).get(room_id)
+    if not room or (user and user.homestay_id and room.homestay_id != user.homestay_id):
+        return HTMLResponse("<div class='text-red-700 p-2'>Invalid room selection.</div>", status_code=400)
+    # Parse and validate dates
+    try:
+        s = date.fromisoformat(start_date)
+        e = date.fromisoformat(end_date)
+    except Exception:
+        return HTMLResponse("<div class='text-red-700 p-2'>Invalid dates.</div>", status_code=400)
+    if not (s < e):
+        return HTMLResponse("<div class='text-red-700 p-2'>End date must be after start date.</div>", status_code=400)
+    # Conflict detection excluding this booking
+    conflicts = (
+        db.query(Booking)
+        .filter(
+            Booking.room_id == room_id,
+            Booking.id != booking_id,
+            Booking.start_date < e,
+            Booking.end_date > s,
+        )
+        .all()
+    )
+    if conflicts:
+        return HTMLResponse("<div class='text-red-700 p-2'>Conflict: overlapping booking exists.</div>", status_code=400)
+    # Apply changes
+    b.room_id = room_id
+    b.guest_name = guest_name.strip()
+    b.guest_contact = guest_contact.strip()
+    b.start_date = s
+    b.end_date = e
+    b.price = price
+    try:
+        b.status = BookingStatus(status)
+    except Exception:
+        return HTMLResponse("<div class='text-red-700 p-2'>Invalid status.</div>", status_code=400)
+    b.comment = (comment.strip() or None)
+    if image and image.filename:
+        data = await image.read()
+        new_url = save_image(data, image.filename, folder="staycal/bookings")
+        if new_url:
+            b.image_url = new_url
+    db.commit()
+    headers = {"HX-Trigger": "bookingUpdated"}
+    return HTMLResponse("", headers=headers)

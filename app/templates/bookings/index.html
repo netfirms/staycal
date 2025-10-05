@@ -10,6 +10,7 @@
     <table class="w-full text-sm">
       <thead>
         <tr class="text-left border-b bg-gray-50">
+          <th class="py-2 px-2">Image</th>
           <th class="py-2 px-2">Guest</th>
           <th class="py-2 px-2">Room</th>
           <th class="py-2 px-2">Dates</th>
@@ -21,6 +22,13 @@
       <tbody class="divide-y">
         {% for b in bookings %}
         <tr>
+          <td class="py-2 px-2">
+            {% if b.image_url %}
+              <img src="{{ b.image_url }}" alt="Image" class="h-12 w-12 object-cover rounded" />
+            {% else %}
+              <div class="h-12 w-12 bg-gray-100 rounded"></div>
+            {% endif %}
+          </td>
           <td class="py-2 px-2">{{ b.guest_name }}<div class="text-xs text-gray-500">{{ b.guest_contact }}</div></td>
           <td class="py-2 px-2">{{ rooms_map[b.room_id].name if rooms_map.get(b.room_id) else 'Room #' ~ b.room_id }}</td>
           <td class="py-2 px-2">{{ b.start_date.isoformat() }} → {{ b.end_date.isoformat() }}</td>

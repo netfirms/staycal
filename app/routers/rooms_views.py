@@ -1,10 +1,11 @@
-from fastapi import APIRouter, Depends, Request, Form
+from fastapi import APIRouter, Depends, Request, Form, UploadFile, File
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from ..db import get_db
 from ..models import User, Room
 from ..security import get_current_user_id
+from ..services.media import save_image
 
 router = APIRouter(prefix="/app/rooms", tags=["rooms"])
 templates = Jinja2Templates(directory="app/templates")
@@ -30,13 +31,17 @@ def rooms_index(request: Request, db: Session = Depends(get_db)):
 
 
 @router.post("/")
-def rooms_create(request: Request, name: str = Form(...), capacity: int = Form(2), default_rate: float | None = Form(None), db: Session = Depends(get_db)):
+async def rooms_create(request: Request, name: str = Form(...), capacity: int = Form(2), default_rate: float | None = Form(None), image: UploadFile | None = File(None), db: Session = Depends(get_db)):
     user = require_user(request, db)
     if not user:
         return RedirectResponse(url="/auth/login", status_code=303)
     if not user.homestay_id:
         return HTMLResponse("<div>Please create/select a property first.</div>", status_code=400)
-    room = Room(homestay_id=user.homestay_id, name=name.strip(), capacity=capacity, default_rate=default_rate)
+    img_url = None
+    if image and image.filename:
+        data = await image.read()
+        img_url = save_image(data, image.filename, folder="staycal/rooms")
+    room = Room(homestay_id=user.homestay_id, name=name.strip(), capacity=capacity, default_rate=default_rate, image_url=img_url)
     db.add(room)
     db.commit()
     return RedirectResponse(url="/app/rooms/", status_code=303)
@@ -54,7 +59,7 @@ def rooms_edit_form(request: Request, room_id: int, db: Session = Depends(get_db
 
 
 @router.post("/{room_id}/edit")
-def rooms_edit(request: Request, room_id: int, name: str = Form(...), capacity: int = Form(2), default_rate: float | None = Form(None), db: Session = Depends(get_db)):
+async def rooms_edit(request: Request, room_id: int, name: str = Form(...), capacity: int = Form(2), default_rate: float | None = Form(None), image: UploadFile | None = File(None), db: Session = Depends(get_db)):
     user = require_user(request, db)
     if not user:
         return RedirectResponse(url="/auth/login", status_code=303)
@@ -64,6 +69,11 @@ def rooms_edit(request: Request, room_id: int, name: str = Form(...), capacity: 
     room.name = name.strip()
     room.capacity = capacity
     room.default_rate = default_rate
+    if image and image.filename:
+        data = await image.read()
+        new_url = save_image(data, image.filename, folder="staycal/rooms")
+        if new_url:
+            room.image_url = new_url
     db.commit()
     return RedirectResponse(url="/app/rooms/", status_code=303)
 

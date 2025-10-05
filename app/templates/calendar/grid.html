@@ -48,10 +48,13 @@
           {% set is_end_segment = (next_day_str >= b.end_date.isoformat()) or (d == days) %}
 
           <div class="relative text-center text-xs border-b p-1 {{ 'bg-slate-50' if wd >= 5 else 'bg-white' }}">
-            <div class="{{ color }} h-6 flex items-center justify-center {{ 'rounded-l' if is_start_segment }} {{ 'rounded-r' if is_end_segment }} shadow-sm"
-                 title="{{ b.guest_name }} — {{ b.start_date.isoformat() }} → {{ b.end_date.isoformat() }}">
-              <span class="px-1 truncate w-full">{{ (b.guest_name if is_start_segment else '') }}</span>
-            </div>
+            <button class="w-full {{ color }} h-6 flex items-center justify-center {{ 'rounded-l' if is_start_segment }} {{ 'rounded-r' if is_end_segment }} shadow-sm hover:brightness-95"
+                    title="{{ b.guest_name }} — {{ b.start_date.isoformat() }} → {{ b.end_date.isoformat() }}"
+                    hx-get="/htmx/booking/edit?booking_id={{ b.id }}"
+                    hx-target="#modal"
+                    hx-swap="innerHTML">
+              <span class="px-1 truncate w-full text-left">{{ (b.guest_name if is_start_segment else '') }}</span>
+            </button>
           </div>
         {% endif %}
       {% endfor %}

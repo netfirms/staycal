@@ -10,6 +10,7 @@ class Homestay(Base):
     owner_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     address: Mapped[str] = mapped_column(String(300), nullable=True)
+    image_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     # Owner of the homestay via homestays.owner_id -> users.id
