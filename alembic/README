@@ -1,0 +1,1 @@
+Alembic migrations for StayCal. Use `alembic upgrade head` to apply migrations.

@@ -638,3 +638,27 @@ These are high‑leverage, user‑visible enhancements we’re considering post�
   - Per‑user theme preference with accessible color palettes; auto respect system dark mode.
 
 > Note: Items above are candidate ideas. Prioritization will be informed by user feedback, support volume, and impact on activation/retention.
+
+
+
+## Database Migrations (Alembic)
+
+The app now uses Alembic for database migrations.
+
+- Initial migration lives under `alembic/versions/20251005_0001_initial.py` and reflects the current models (users, homestays, rooms, bookings, subscriptions), including useful indexes and constraints.
+- Alembic reads the database URL from `DATABASE_URL` (or falls back to app settings).
+
+Local usage:
+- Ensure your virtualenv is active and deps installed: `pip install -r requirements.txt`
+- Set `DATABASE_URL` in your environment (optional; defaults to local SQLite: `sqlite:///./staycal.db`).
+- Apply migrations: `alembic upgrade head`
+- Generate a new migration (if you change models) using autogenerate as a starting point:
+  - `alembic revision --autogenerate -m "your message"`
+  - Review and edit the generated script, then `alembic upgrade head`.
+
+Docker/Railway:
+- The Docker image runs `alembic upgrade head` on startup (non-fatal if DB temporarily unavailable), then starts Uvicorn.
+- On Railway, ensure `DATABASE_URL` is set by the PostgreSQL service and the app service has that variable available.
+
+Fallback safety:
+- The application still executes a lightweight best-effort schema check in `ensure_mvp_schema()` for extra resilience in dev environments; Alembic is the primary mechanism for production.
