@@ -22,6 +22,11 @@
       {% endif %}
       <input name="image" type="file" accept="image/*" class="border rounded w-full p-2" />
     </div>
+    <div>
+      <label class="block text-sm font-medium">OTA iCal URL (optional)</label>
+      <input name="ota_ical_url" type="url" value="{{ room.ota_ical_url or '' }}" placeholder="https://example.com/calendar.ics" class="border rounded w-full p-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+      <p class="text-xs text-gray-500 mt-1">External calendar events from this URL will appear on the room calendar and block new overlaps.</p>
+    </div>
     <div class="flex items-center gap-2">
       <a href="/app/rooms/" class="px-3 py-2 border rounded">Cancel</a>
       <button class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Save Changes</button>

@@ -31,7 +31,7 @@ def rooms_index(request: Request, db: Session = Depends(get_db)):
 
 
 @router.post("/")
-async def rooms_create(request: Request, name: str = Form(...), capacity: int = Form(2), default_rate: float | None = Form(None), image: UploadFile | None = File(None), db: Session = Depends(get_db)):
+async def rooms_create(request: Request, name: str = Form(...), capacity: int = Form(2), default_rate: float | None = Form(None), ota_ical_url: str | None = Form(None), image: UploadFile | None = File(None), db: Session = Depends(get_db)):
     user = require_user(request, db)
     if not user:
         return RedirectResponse(url="/auth/login", status_code=303)
@@ -41,7 +41,14 @@ async def rooms_create(request: Request, name: str = Form(...), capacity: int = 
     if image and image.filename:
         data = await image.read()
         img_url = save_image(data, image.filename, folder="staycal/rooms")
-    room = Room(homestay_id=user.homestay_id, name=name.strip(), capacity=capacity, default_rate=default_rate, image_url=img_url)
+    room = Room(
+        homestay_id=user.homestay_id,
+        name=name.strip(),
+        capacity=capacity,
+        default_rate=default_rate,
+        image_url=img_url,
+        ota_ical_url=(ota_ical_url.strip() if ota_ical_url else None),
+    )
     db.add(room)
     db.commit()
     return RedirectResponse(url="/app/rooms/", status_code=303)
@@ -59,7 +66,7 @@ def rooms_edit_form(request: Request, room_id: int, db: Session = Depends(get_db
 
 
 @router.post("/{room_id}/edit")
-async def rooms_edit(request: Request, room_id: int, name: str = Form(...), capacity: int = Form(2), default_rate: float | None = Form(None), image: UploadFile | None = File(None), db: Session = Depends(get_db)):
+async def rooms_edit(request: Request, room_id: int, name: str = Form(...), capacity: int = Form(2), default_rate: float | None = Form(None), ota_ical_url: str | None = Form(None), image: UploadFile | None = File(None), db: Session = Depends(get_db)):
     user = require_user(request, db)
     if not user:
         return RedirectResponse(url="/auth/login", status_code=303)
@@ -69,6 +76,7 @@ async def rooms_edit(request: Request, room_id: int, name: str = Form(...), capa
     room.name = name.strip()
     room.capacity = capacity
     room.default_rate = default_rate
+    room.ota_ical_url = (ota_ical_url.strip() if ota_ical_url else None)
     if image and image.filename:
         data = await image.read()
         new_url = save_image(data, image.filename, folder="staycal/rooms")

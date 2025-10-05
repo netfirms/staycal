@@ -66,6 +66,11 @@
         <input name="image" type="file" accept="image/*" class="border rounded w-full p-2" />
       </div>
       <div>
+        <label class="block text-sm font-medium">OTA iCal URL (optional)</label>
+        <input name="ota_ical_url" type="url" placeholder="https://example.com/calendar.ics" class="border rounded w-full p-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+        <p class="text-xs text-gray-500 mt-1">Paste the external calendar (ICS) URL from your OTA to display and avoid double-booking.</p>
+      </div>
+      <div>
         <button class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Create Room</button>
       </div>
     </form>

@@ -8,6 +8,7 @@ from ..models import User, Room, Booking, BookingStatus
 from ..security import get_current_user_id
 from ..services.auto_checkout import run_auto_checkout
 from ..services.media import save_image
+from ..services.ical import fetch_ota_events, overlaps_ota
 
 router = APIRouter(prefix="/app/bookings", tags=["bookings"])
 templates = Jinja2Templates(directory="app/templates")
@@ -66,6 +67,14 @@ async def bookings_create(request: Request, db: Session = Depends(get_db), room_
     conflicts = db.query(Booking).filter(Booking.room_id == room_id, Booking.start_date < e, Booking.end_date > s).all()
     if conflicts:
         return HTMLResponse("<div class='p-3 text-red-700'>Conflict: overlapping booking exists.</div>", status_code=400)
+    # prevent overlaps with OTA calendar if configured
+    if getattr(room, "ota_ical_url", None):
+        try:
+            ota_events = fetch_ota_events(room.ota_ical_url)
+            if overlaps_ota(ota_events, s, e):
+                return HTMLResponse("<div class='p-3 text-red-700'>Conflict: overlaps external OTA calendar.</div>", status_code=400)
+        except Exception:
+            pass
     img_url = None
     if image and image.filename:
         data = await image.read()
@@ -107,6 +116,14 @@ async def bookings_edit(request: Request, booking_id: int, db: Session = Depends
     conflicts = db.query(Booking).filter(Booking.room_id == room_id, Booking.id != booking_id, Booking.start_date < e, Booking.end_date > s).all()
     if conflicts:
         return HTMLResponse("<div class='p-3 text-red-700'>Conflict: overlapping booking exists.</div>", status_code=400)
+    # prevent overlaps with OTA calendar if configured
+    if getattr(room, "ota_ical_url", None):
+        try:
+            ota_events = fetch_ota_events(room.ota_ical_url)
+            if overlaps_ota(ota_events, s, e):
+                return HTMLResponse("<div class='p-3 text-red-700'>Conflict: overlaps external OTA calendar.</div>", status_code=400)
+        except Exception:
+            pass
     b.room_id = room_id
     b.guest_name = guest_name.strip()
     b.guest_contact = guest_contact.strip()

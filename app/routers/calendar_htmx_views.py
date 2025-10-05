@@ -9,6 +9,7 @@ from ..models import Booking, Room, BookingStatus, User
 from ..security import get_current_user_id
 from ..services.auto_checkout import run_auto_checkout
 from ..services.media import save_image
+from ..services.ical import fetch_ota_events, overlaps_ota
 
 router = APIRouter(prefix="/htmx", tags=["calendar"]) 
 templates = Jinja2Templates(directory="app/templates")
@@ -64,10 +65,19 @@ def booking_save(request: Request, db: Session = Depends(get_db), room_id: int =
         return HTMLResponse("<div>Please login</div>", status_code=401)
     s = date.fromisoformat(start_date)
     e = date.fromisoformat(end_date)
-    # conflict detection
+    # conflict detection with existing bookings
     conflicts = db.query(Booking).filter(Booking.room_id == room_id, Booking.start_date < e, Booking.end_date > s).all()
     if conflicts:
         return HTMLResponse("<div class='text-red-600 p-2'>Conflict: dates overlap existing booking.</div>", status_code=400)
+    # also prevent overlap with OTA calendar if configured
+    room = db.query(Room).get(room_id)
+    if room and getattr(room, "ota_ical_url", None):
+        try:
+            ota_events = fetch_ota_events(room.ota_ical_url)
+            if overlaps_ota(ota_events, s, e):
+                return HTMLResponse("<div class='text-red-600 p-2'>Conflict: overlaps external OTA calendar.</div>", status_code=400)
+        except Exception:
+            pass
     booking = Booking(room_id=room_id, guest_name=guest_name, guest_contact=guest_contact, start_date=s, end_date=e, price=price, status=BookingStatus.CONFIRMED, comment=comment.strip() or None)
     db.add(booking)
     db.commit()
@@ -119,6 +129,29 @@ def calendar_events(request: Request, room_id: int, start: str, end: str, db: Se
         }
         for b in bookings
     ]
+    # Append OTA (external) events if room has an iCal URL
+    room = db.query(Room).get(room_id)
+    if room and getattr(room, "ota_ical_url", None):
+        try:
+            ota_list = fetch_ota_events(room.ota_ical_url)
+            for ev in ota_list:
+                s = ev.get("start_date")
+                e = ev.get("end_date")
+                title = ev.get("title") or "OTA"
+                if not s or not e:
+                    continue
+                # filter to requested window
+                if s < end_date and e > start_date:
+                    events.append({
+                        "id": f"ota-{s.isoformat()}-{e.isoformat()}",
+                        "title": f"OTA: {title}",
+                        "start": s.isoformat(),
+                        "end": e.isoformat(),
+                        "allDay": True,
+                        "color": "#fdba74",  # orange-300
+                    })
+        except Exception:
+            pass
     return JSONResponse(events)
 
 @router.post("/booking/update-status", response_class=HTMLResponse)
@@ -186,6 +219,15 @@ def booking_update_dates(
     )
     if conflicts:
         return HTMLResponse("<div class='text-red-700 p-2'>Conflict: overlapping booking exists.</div>", status_code=400)
+    # Also check against OTA events for this room
+    room = db.query(Room).get(b.room_id)
+    if room and getattr(room, "ota_ical_url", None):
+        try:
+            ota_events = fetch_ota_events(room.ota_ical_url)
+            if overlaps_ota(ota_events, s, e):
+                return HTMLResponse("<div class='text-red-700 p-2'>Conflict: overlaps external OTA calendar.</div>", status_code=400)
+        except Exception:
+            pass
     b.start_date = s
     b.end_date = e
     db.commit()
@@ -264,6 +306,15 @@ async def booking_update(
     )
     if conflicts:
         return HTMLResponse("<div class='text-red-700 p-2'>Conflict: overlapping booking exists.</div>", status_code=400)
+    # Check OTA overlaps for the selected room
+    room_sel = db.query(Room).get(room_id)
+    if room_sel and getattr(room_sel, "ota_ical_url", None):
+        try:
+            ota_events = fetch_ota_events(room_sel.ota_ical_url)
+            if overlaps_ota(ota_events, s, e):
+                return HTMLResponse("<div class='text-red-700 p-2'>Conflict: overlaps external OTA calendar.</div>", status_code=400)
+        except Exception:
+            pass
     # Apply changes
     b.room_id = room_id
     b.guest_name = guest_name.strip()
