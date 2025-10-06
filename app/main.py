@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import RedirectResponse
 from .db import Base, engine, ensure_mvp_schema, SessionLocal
 from . import models  # ensure models are imported so tables are registered
 from .routers import auth_views, app_views, calendar_htmx_views, admin_views, public_views
@@ -38,7 +39,24 @@ def _ensure_default_admin():
 
 _ensure_default_admin()
 
-app = FastAPI(title="StayCal")
+app = FastAPI(
+    title="StayCal",
+    version="0.1.0",
+    description=(
+        "StayCal: Calendar-first homestay management.\n\n"
+        "Swagger UI includes both web and mobile endpoints. "
+        "Use the 'mobile-api' tag to view the Mobile JSON API."
+    ),
+    openapi_tags=[
+        {
+            "name": "mobile-api",
+            "description": (
+                "Mobile JSON API for the StayCal mobile application. "
+                "Session-cookie based auth. Endpoints under /api/v1."
+            ),
+        }
+    ],
+)
 
 app.include_router(public_views.router)
 app.include_router(auth_views.router)
@@ -49,9 +67,20 @@ app.include_router(rooms_views.router)
 app.include_router(bookings_views.router)
 app.include_router(homestays_views.router)
 
+# Mobile JSON API
+from .routers import api_mobile
+app.include_router(api_mobile.router)
+
 # Static (placeholder)
 app.mount("/static", StaticFiles(directory="app/static", check_dir=False), name="static")
 
 @app.get("/healthz")
 def healthz():
     return {"status": "ok"}
+
+
+# Convenience: Mobile API Swagger shortcut
+@app.get("/api/v1/docs", include_in_schema=False)
+def mobile_docs_redirect():
+    # Jump to the mobile-api tag section in Swagger UI
+    return RedirectResponse(url="/docs#/mobile-api")
