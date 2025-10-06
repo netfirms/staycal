@@ -687,3 +687,77 @@ Notes:
 - PostgreSQL data is persisted in a local named volume pgdata. To wipe local DB data, run: docker compose down -v
 - To use Cloudinary in Compose, set CLOUDINARY_URL in docker-compose.yml or pass it via an env file.
 - If you prefer using an .env file, you can uncomment the Compose DATABASE_URL example in .env.example and use `--env-file` with Docker Compose.
+
+
+## Mobile JSON API & Swagger
+
+A minimal JSON API is provided for the StayCal mobile application. It reuses the same session-cookie authentication as the web app.
+
+- Base path: /api/v1
+- Auth: session cookie set by POST /api/v1/auth/login
+- Swagger UI: /docs (look for the "mobile-api" tag)
+- Direct link to the mobile API section: /api/v1/docs (redirects to /docs#/mobile-api)
+- Health check: GET /healthz → {"status":"ok"}
+
+Authentication flow (with curl):
+
+1) Login and save cookie:
+
+```
+curl -s -X POST http://localhost:8000/api/v1/auth/login \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"owner@example.com","password":"admin12345"}' \
+  -c cookies.txt | jq
+```
+
+2) Call authenticated endpoints using the saved cookie:
+
+```
+# Who am I
+curl -s http://localhost:8000/api/v1/auth/me -b cookies.txt | jq
+
+# Homestay info (or null if none)
+curl -s http://localhost:8000/api/v1/homestay -b cookies.txt | jq
+
+# Rooms for my homestay
+curl -s http://localhost:8000/api/v1/rooms -b cookies.txt | jq
+
+# Bookings (optionally filter with ?start=YYYY-MM-DD&end=YYYY-MM-DD&room_id=ID)
+curl -s 'http://localhost:8000/api/v1/bookings?start=2025-10-01&end=2025-10-31' -b cookies.txt | jq
+```
+
+3) Create / update / delete a booking:
+
+```
+# Create
+curl -s -X POST http://localhost:8000/api/v1/bookings \
+  -H 'Content-Type: application/json' \
+  -b cookies.txt \
+  -d '{
+        "room_id": 101,
+        "guest_name": "Jane Doe",
+        "guest_contact": "+66-800-123-456",
+        "start_date": "2025-10-07",
+        "end_date": "2025-10-10",
+        "price": 3500,
+        "status": "confirmed",
+        "comment": "Late arrival"
+      }' | jq
+
+# Update (PATCH)
+curl -s -X PATCH http://localhost:8000/api/v1/bookings/555 \
+  -H 'Content-Type: application/json' \
+  -b cookies.txt \
+  -d '{
+        "status": "checked_in",
+        "comment": "Guest arrived"
+      }' | jq
+
+# Delete
+curl -i -X DELETE http://localhost:8000/api/v1/bookings/555 -b cookies.txt
+```
+
+Notes:
+- API responses and request bodies include examples in Swagger UI.
+- Conflict detection prevents overlapping bookings per room; OTA iCal overlap checks are applied when a room has an external calendar URL configured.
+- The API enforces tenant isolation by scoping queries to the current user’s homestay.
