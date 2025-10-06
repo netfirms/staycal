@@ -205,8 +205,8 @@
       <div class="bg-white border-2 border-blue-600 rounded-2xl shadow-sm p-6 relative flex flex-col">
         <span class="absolute -top-3 right-4 text-xs px-2 py-0.5 rounded-full bg-blue-600 text-white">Popular</span>
         <div class="text-sm font-semibold text-blue-700">Basic</div>
-        <div class="mt-2 text-4xl font-extrabold">฿249<span class="text-base font-medium text-gray-500">/mo</span></div>
-        <div class="text-xs text-gray-500">or ฿2,490/yr</div>
+        <div class="mt-2 text-4xl font-extrabold">฿{{ '%.0f'|format(pricing.basic_monthly|float) }}<span class="text-base font-medium text-gray-500">/mo</span></div>
+        <div class="text-xs text-gray-500">or ฿{{ '%.0f'|format(pricing.basic_yearly|float) }}/yr</div>
         <div class="text-sm text-gray-500">Up to 5 users · up to 10 rooms</div>
         <ul class="mt-4 text-sm text-gray-700 space-y-2">
           <li>• Everything in Free</li>
@@ -222,8 +222,8 @@
       <!-- Pro -->
       <div class="bg-white border rounded-2xl shadow-sm p-6 flex flex-col">
         <div class="text-sm font-semibold text-blue-700">Pro</div>
-        <div class="mt-2 text-4xl font-extrabold">฿699<span class="text-base font-medium text-gray-500">/mo</span></div>
-        <div class="text-xs text-gray-500">or ฿6,990/yr</div>
+        <div class="mt-2 text-4xl font-extrabold">฿{{ '%.0f'|format(pricing.pro_monthly|float) }}<span class="text-base font-medium text-gray-500">/mo</span></div>
+        <div class="text-xs text-gray-500">or ฿{{ '%.0f'|format(pricing.pro_yearly|float) }}/yr</div>
         <div class="text-sm text-gray-500">Unlimited users · unlimited rooms</div>
         <ul class="mt-4 text-sm text-gray-700 space-y-2">
           <li>• Everything in Basic</li>

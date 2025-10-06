@@ -29,7 +29,7 @@
           {% if user.role == 'admin' %}
             <a href="/admin/" class="hidden sm:inline px-3 py-1.5 text-sm rounded hover:bg-gray-100">Admin</a>
           {% endif %}
-          <form method="post" action="/auth/logout" class="ml-1">
+          <form method="post" action="/auth/logout" class="ml-1" onsubmit="return confirm('Are you sure you want to log out?')">
             <button class="px-3 py-1.5 text-sm rounded bg-gray-800 text-white hover:bg-black">Logout</button>
           </form>
         {% else %}

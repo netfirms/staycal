@@ -1,11 +1,18 @@
 from __future__ import annotations
 import os
+import sys
 from logging.config import fileConfig
 
 from sqlalchemy import engine_from_config, pool
 from sqlalchemy import create_engine
 from sqlalchemy.engine import Connection
 from alembic import context
+
+# Ensure project root is on sys.path so `import app` works when Alembic runs via CLI
+# This makes imports reliable inside Docker/Compose where the CWD may vary.
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
 
 # Import target metadata from the app
 from app.db import Base

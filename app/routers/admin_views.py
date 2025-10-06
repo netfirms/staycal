@@ -14,11 +14,37 @@ from ..services.media import _ensure_cloudinary_configured
 router = APIRouter(prefix="/admin", tags=["admin"])
 templates = Jinja2Templates(directory="app/templates")
 
+@router.get("/login", response_class=HTMLResponse)
+def admin_login_form(request: Request):
+    return templates.TemplateResponse("admin/login.html", {"request": request})
+
+
+@router.post("/login")
+def admin_login(request: Request, email: str = Form(...), password: str = Form(...), db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.email == email).first()
+    from ..security import verify_password, set_session
+    if not user or not verify_password(password, user.hashed_password):
+        return templates.TemplateResponse(
+            "admin/login.html",
+            {"request": request, "error": "Invalid email or password"},
+            status_code=400,
+        )
+    if user.role != "admin":
+        return templates.TemplateResponse(
+            "admin/login.html",
+            {"request": request, "error": "You are not authorized to access the admin dashboard."},
+            status_code=403,
+        )
+    redirect = RedirectResponse(url="/admin", status_code=303)
+    set_session(redirect, user.id)
+    return redirect
+
+
 @router.get("/", response_class=HTMLResponse)
 def admin_dashboard(request: Request, db: Session = Depends(get_db)):
     uid = get_current_user_id(request)
     if not uid:
-        return RedirectResponse(url="/auth/login", status_code=303)
+        return RedirectResponse(url="/admin/login", status_code=303)
     # require admin role
     user = db.query(User).get(uid)
     if not user or user.role != "admin":
@@ -107,6 +133,9 @@ def admin_dashboard(request: Request, db: Session = Depends(get_db)):
         "month_start": month_start,
     }
 
+    # Build a quick map of subscriptions by owner for inline plan management
+    subs_map = {s.owner_id: s for s in subs}
+
     return templates.TemplateResponse(
         "admin/dashboard.html",
         {
@@ -114,7 +143,19 @@ def admin_dashboard(request: Request, db: Session = Depends(get_db)):
             "users": users,
             "homestays": homestays,
             "subs": subs,
+            "subs_map": subs_map,
+            "PlanName": PlanName,
+            "SubscriptionStatus": SubscriptionStatus,
             "analytics": analytics,
+            # Pricing for display/editing
+            "pricing": {
+                "basic_monthly": getattr(settings, "PLAN_BASIC_MONTHLY", 249),
+                "basic_yearly": getattr(settings, "PLAN_BASIC_YEARLY", 2490),
+                "pro_monthly": getattr(settings, "PLAN_PRO_MONTHLY", 699),
+                "pro_yearly": getattr(settings, "PLAN_PRO_YEARLY", 6990),
+            },
+            "pricing_saved": request.query_params.get("pricing_saved"),
+            "pricing_error": request.query_params.get("pricing_error"),
         },
     )
 
@@ -123,7 +164,7 @@ def admin_dashboard(request: Request, db: Session = Depends(get_db)):
 def admin_plans(request: Request, db: Session = Depends(get_db)):
     uid = get_current_user_id(request)
     if not uid:
-        return RedirectResponse(url="/auth/login", status_code=303)
+        return RedirectResponse(url="/admin/login", status_code=303)
     user = db.query(User).get(uid)
     if not user or user.role != "admin":
         return HTMLResponse("<h2>Forbidden</h2>", status_code=403)
@@ -150,10 +191,11 @@ def admin_plans_save(
     plan_name: str = Form(...),
     status: str = Form(...),
     expires_at: str | None = Form(None),
+    return_to: str | None = Form(None),
 ):
     uid = get_current_user_id(request)
     if not uid:
-        return RedirectResponse(url="/auth/login", status_code=303)
+        return RedirectResponse(url="/admin/login", status_code=303)
     admin_user = db.query(User).get(uid)
     if not admin_user or admin_user.role != "admin":
         return HTMLResponse("<h2>Forbidden</h2>", status_code=403)
@@ -192,14 +234,21 @@ def admin_plans_save(
     sub.expires_at = dt
 
     db.commit()
-    return RedirectResponse(url="/admin/plans", status_code=303)
+    # Redirect back to the requested page (dashboard or plans)
+    dest = (return_to or "").strip() if return_to else None
+    if not dest:
+        # fallback to Referer if provided
+        dest = request.headers.get("referer")
+    if not dest:
+        dest = "/admin/plans"
+    return RedirectResponse(url=dest, status_code=303)
 
 
 @router.get("/cloudinary", response_class=HTMLResponse)
 def admin_cloudinary(request: Request, db: Session = Depends(get_db)):
     uid = get_current_user_id(request)
     if not uid:
-        return RedirectResponse(url="/auth/login", status_code=303)
+        return RedirectResponse(url="/admin/login", status_code=303)
     user = db.query(User).get(uid)
     if not user or user.role != "admin":
         return HTMLResponse("<h2>Forbidden</h2>", status_code=403)
@@ -219,7 +268,7 @@ def admin_cloudinary(request: Request, db: Session = Depends(get_db)):
 def admin_cloudinary_save(request: Request, db: Session = Depends(get_db), cloudinary_url: str = Form("") ):
     uid = get_current_user_id(request)
     if not uid:
-        return RedirectResponse(url="/auth/login", status_code=303)
+        return RedirectResponse(url="/admin/login", status_code=303)
     user = db.query(User).get(uid)
     if not user or user.role != "admin":
         return HTMLResponse("<h2>Forbidden</h2>", status_code=403)
@@ -248,3 +297,52 @@ def admin_cloudinary_save(request: Request, db: Session = Depends(get_db), cloud
         "admin/cloudinary.html",
         {"request": request, "current_url": url, "configured": ok, "message": msg, "error": err},
     )
+
+
+@router.post("/pricing")
+def admin_pricing_save(
+    request: Request,
+    db: Session = Depends(get_db),
+    basic_monthly: str = Form(...),
+    basic_yearly: str = Form(...),
+    pro_monthly: str = Form(...),
+    pro_yearly: str = Form(...),
+):
+    uid = get_current_user_id(request)
+    if not uid:
+        return RedirectResponse(url="/admin/login", status_code=303)
+    user = db.query(User).get(uid)
+    if not user or user.role != "admin":
+        return HTMLResponse("<h2>Forbidden</h2>", status_code=403)
+
+    def _parse_float(s: str) -> float | None:
+        try:
+            v = float((s or "").strip())
+            if v < 0:
+                return None
+            return v
+        except Exception:
+            return None
+
+    bm = _parse_float(basic_monthly)
+    by = _parse_float(basic_yearly)
+    pm = _parse_float(pro_monthly)
+    py = _parse_float(pro_yearly)
+
+    if None in (bm, by, pm, py):
+        return RedirectResponse(url="/admin?pricing_error=invalid", status_code=303)
+
+    # Persist in environment and in-memory settings (runtime)
+    os.environ["PLAN_BASIC_MONTHLY"] = str(bm)
+    os.environ["PLAN_BASIC_YEARLY"] = str(by)
+    os.environ["PLAN_PRO_MONTHLY"] = str(pm)
+    os.environ["PLAN_PRO_YEARLY"] = str(py)
+    try:
+        setattr(settings, "PLAN_BASIC_MONTHLY", bm)
+        setattr(settings, "PLAN_BASIC_YEARLY", by)
+        setattr(settings, "PLAN_PRO_MONTHLY", pm)
+        setattr(settings, "PLAN_PRO_YEARLY", py)
+    except Exception:
+        pass
+
+    return RedirectResponse(url="/admin?pricing_saved=1", status_code=303)

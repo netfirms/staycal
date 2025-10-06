@@ -32,9 +32,14 @@
     <div class="text-xs text-gray-600 mb-2">Showing: All time</div>
   {% endif %}
   <div class="flex flex-wrap items-center justify-between">
-    <div>
-      <div class="font-semibold">{{ active.name }}</div>
-      <div class="text-sm text-gray-600">{{ active.address }}</div>
+    <div class="flex items-center gap-3">
+      {% if active.image_url %}
+        <img src="{{ active.image_url }}" alt="{{ active.name }}" class="w-12 h-12 rounded object-cover border" />
+      {% endif %}
+      <div>
+        <div class="font-semibold">{{ active.name }}</div>
+        <div class="text-sm text-gray-600">{{ active.address }}</div>
+      </div>
     </div>
     {% set active_block = (hs_blocks | selectattr('homestay', 'equalto', active) | list) %}
     {% set s = (active_block[0].stats if active_block and active_block[0] else None) %}
@@ -133,7 +138,12 @@
           {% if block.rooms %}
             <ul class="list-disc pl-5 text-sm">
               {% for r in block.rooms %}
-                <li>{{ r.name }} (cap {{ r.capacity }}){% if r.default_rate is not none %} — ฿{{ '{:,.2f}'.format(r.default_rate|float) }}{% endif %}</li>
+                <li class="flex items-center gap-2">
+                  {% if r.image_url %}
+                    <img src="{{ r.image_url }}" alt="{{ r.name }}" class="w-6 h-6 rounded object-cover border" />
+                  {% endif %}
+                  <span>{{ r.name }} (cap {{ r.capacity }}){% if r.default_rate is not none %} — ฿{{ '{:,.2f}'.format(r.default_rate|float) }}{% endif %}</span>
+                </li>
               {% endfor %}
             </ul>
           {% else %}
