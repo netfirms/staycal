@@ -44,5 +44,6 @@ EXPOSE 8000
 # Set the entrypoint to our script
 ENTRYPOINT ["./entrypoint.sh"]
 
-# Use the shell form of CMD to allow for environment variable substitution
+# Use the shell form of CMD to allow for environment variable substitution.
+# This string will be executed by the entrypoint script.
 CMD uvicorn app.main:app --host 0.0.0.0 --port ${PORT}
