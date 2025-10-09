@@ -104,91 +104,14 @@ flowchart LR
 - Server: Uvicorn
 - Templates: Jinja2
 - Interactivity: HTMX 1.9+ and FullCalendar 6.x via CDN
-- ORM: SQLAlchemy 2.0 (tables auto-created on app startup for MVP)
+- ORM: SQLAlchemy 2.0
 - Auth: Session cookie via itsdangerous
-
-Key routers/endpoints:
-- public_views
-  - GET / → Landing page
-- auth_views
-  - GET /auth/login, POST /auth/login
-  - GET /auth/register, POST /auth/register
-  - POST /auth/logout
-- app_views
-  - GET /app → Dashboard (today’s ops, per-room calendars)
-  - GET /app/overview → Stats and listings, with optional ?start=YYYY-MM-DD&end=YYYY-MM-DD; defaults to current month
-- calendar_htmx_views
-  - GET /htmx/booking/new → Booking modal (HTML fragment)
-  - POST /htmx/booking/save → Create booking; emits HX-Trigger: bookingSaved
-  - GET /htmx/calendar/events → JSON events for FullCalendar
-  - POST /htmx/booking/update-status → Update booking status
-- homestays_views
-  - /app/homestays/ (list/create), edit, delete, set-active
-- rooms_views
-  - /app/rooms/ (list/create), edit, delete
-- bookings_views
-  - /app/bookings/ (list), new/create, edit/update, delete
-- admin_views
-  - GET /admin/ (basic admin dashboard; requires role=admin)
-
-Auto-checkout integration:
-- Executed on key requests (dashboard, overview, bookings list, calendar view) to mark past end_date bookings as checked_out.
 
 ---
 
 ## 5. Data Structure and Relations
 
-Core tables and fields:
-
-- users
-  - id (PK)
-  - email (UNIQUE)
-  - hashed_password
-  - role (admin | owner | staff)
-  - homestay_id (FK → homestays, NULL for admin)
-  - created_at (timestamp)
-
-- subscriptions
-  - id (PK)
-  - owner_id (FK → users, UNIQUE)
-  - plan_name (free | basic | pro)
-  - status (active | cancelled | expired)
-  - expires_at (timestamp)
-
-- homestays
-  - id (PK)
-  - owner_id (FK → users)
-  - name
-  - address
-  - created_at (timestamp)
-
-- rooms
-  - id (PK)
-  - homestay_id (FK → homestays)
-  - name
-  - capacity (integer)
-  - default_rate (decimal)
-
-- bookings
-  - id (PK)
-  - room_id (FK → rooms)
-  - guest_name
-  - guest_contact
-  - start_date (date)
-  - end_date (date)
-  - price (decimal)
-  - status (tentative | confirmed | checked_in | checked_out | cancelled)
-  - comment (text, optional)
-
-Relationships:
-
-- Owner user has one or more Properties (stored in the homestays table) and one Subscription.
-- Property has many Rooms and many Users (staff via users.homestay_id).
-- Room has many Bookings.
-
-Note on terminology: The UI uses “Property” throughout, while the database/table/model are named Homestay for historical reasons.
-
-Mermaid ER diagram:
+Core tables and fields are defined in the SQLAlchemy models. See `app/models.py` for details. The ER diagram below provides an overview.
 
 ```mermaid
 erDiagram
@@ -239,525 +162,82 @@ erDiagram
   }
 ```
 
-Booking conflict rule:
-
-```
-For a given room_id, (start_date, end_date) of any two bookings must not overlap.
-```
-
 ---
 
 ## 6. Technology Stack
 
 - Python 3.10+
 - FastAPI + Uvicorn
-- SQLAlchemy 2.0
-- PostgreSQL (production) / SQLite (local default)
+- SQLAlchemy 2.0 + Alembic
+- PostgreSQL (production) / SQLite (local)
 - Jinja2 templates
 - HTMX 1.9+
-- FullCalendar 6.x (via CDN)
+- FullCalendar 6.x
 - Tailwind CSS (via CDN)
-- passlib[bcrypt] with bcrypt==4.0.1 (pinned for compatibility)
-
-Key pinned dependencies (see requirements.txt):
-- fastapi==0.118.0
-- uvicorn[standard]==0.30.6
-- sqlalchemy==2.0.34
-- psycopg[binary]==3.2.10
-- python-multipart==0.0.20
-- passlib[bcrypt]==1.7.4
-- bcrypt==4.0.1
-- python-dotenv==1.0.1
-- itsdangerous==2.2.0
+- Docker & Docker Compose
 
 ---
 
 ## 7. Local Development
 
-Quick start with the helper script:
-
-```
+### Quick Start (Script)
+```bash
 bash run_local.sh
 ```
+This script sets up the virtual environment, installs dependencies, and starts the Uvicorn server with live reload.
 
-What it does:
-- Creates .venv if missing and installs requirements.
-- Copies .env.example to .env if missing.
-- Exports DEBUG=true and runs the app at http://127.0.0.1:8000 with reload.
-- Uses SQLite staycal.db by default unless DATABASE_URL is set.
-
-Manual steps (alternative):
-- Create venv, install requirements, set env, run:
-
-```
-uvicorn app.main:app --reload
-```
-
-Environment variables (.env):
-- SECRET_KEY=change-me
-- SESSION_COOKIE_NAME=staycal_session
-- DATABASE_URL=postgresql+psycopg://user:password@host:port/dbname (omit to use SQLite)
-
-Initial user journey:
-- Visit / → click Register to create an account.
-- Go to /app/homestays/ → create a Property and set it active.
-- Go to /app/rooms/ → add rooms (optionally set default_rate).
-- Go to /app → use the calendar to select dates and create bookings.
-- Manage Bookings at /app/bookings/; edit status, dates, price, etc.
+### Manual Setup
+1.  Create and activate a virtualenv: `python -m venv .venv && source .venv/bin/activate`
+2.  Install dependencies: `pip install -r requirements.txt`
+3.  Copy `.env.example` to `.env` and configure variables.
+4.  Run database migrations: `alembic upgrade head`
+5.  Start the server: `uvicorn app.main:app --reload`
 
 ---
 
 ## 8. Deployment on Railway
 
-- Dockerfile provided; service listens on PORT (default 8000).
-- Steps:
-  1. Create a PostgreSQL service on Railway.
-  2. Create a service from this repository (Dockerfile build).
-  3. Set environment variables in Railway:
-     - DATABASE_URL (provided automatically by Railway’s Postgres plugin)
-     - SECRET_KEY (set a strong value)
-     - SESSION_COOKIE_NAME (optional)
-  4. Deploy; Railway will assign a public domain.
+The application is optimized for deployment on Railway using Docker. The deployment process is configured using `Railway.toml` and a multi-stage `Dockerfile`.
 
-Dockerfile entrypoint:
+### Key Configuration:
 
-```
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "${PORT}"]
-```
+-   **`Railway.toml`**:
+    -   Specifies a Dockerfile-based build.
+    -   Uses a `releaseCommand = "alembic upgrade head"` to run database migrations safely during the release phase.
+    -   Includes a health check at the `/healthz` endpoint.
 
----
+-   **`Dockerfile`**:
+    -   **Multi-Stage Build:** Uses a two-stage build to create a lean, secure final image. The first stage builds the Python dependencies, and the second stage copies them into a clean image with the application source code.
+    -   **Non-Root User:** Creates and runs the application as a non-root `appuser` for improved security.
+    -   **Entrypoint Script:** Uses an `entrypoint.sh` script to handle application startup.
 
-## 9. Notes & Limitations (MVP)
+### Deployment Steps:
 
-- Tables are auto-created on startup (Base.metadata.create_all). Use Alembic migrations for production changes.
-- Lightweight startup migration: ensure_mvp_schema() adds the bookings.comment column to existing databases (SQLite/Postgres) when missing.
-- No payment gateway is implemented; subscriptions are modeled but not enforced.
-- Admin panel is minimal and intended for demonstration/testing.
-- Email/notifications are not implemented.
-- Session cookies are not marked secure in DEBUG; set secure cookies behind HTTPS in production.
+1.  **Provision Services:**
+    -   Create a **PostgreSQL** service on Railway.
+    -   Create a new service and connect it to your GitHub repository. Railway will automatically detect the `Dockerfile` and `Railway.toml`.
 
----
+2.  **Configure Environment Variables:**
+    -   In the Railway service dashboard, go to the **Variables** tab.
+    -   Railway will automatically inject the `DATABASE_URL` from the PostgreSQL service.
+    -   Add a `SECRET_KEY` and set it to a strong, randomly generated value.
+    -   Optionally, add `CLOUDINARY_URL` to enable image uploads.
 
-## 10. Changelog (recent highlights)
-
-- Replaced custom month grid with FullCalendar on the dashboard; added JSON events endpoint.
-- Implemented Homestay, Room, and Booking CRUD.
-- Added Overview with period-based stats (defaults to current month), THB currency formatting, today’s check-ins/outs, upcoming check-ins list.
-- Implemented auto-checkout of past-end-date bookings on key pages.
-- Added public landing page with graphics and CTAs.
-- Fixed dependencies and compatibility (psycopg[binary], python-multipart, bcrypt pin) and removed incorrect htmx pip dep.
-- Added run_local.sh helper and .env.example.
+3.  **Deploy:**
+    -   Pushing to your main branch will trigger a new deployment on Railway.
+    -   During the deployment, Railway will first run the `releaseCommand` (`alembic upgrade head`) and then start the application service.
+    -   Once deployed, Railway will provide a public domain to access the application.
 
 ---
 
-## 11. License
+## 9. Database Migrations (Alembic)
 
-Add your preferred open-source license here.
+The app uses Alembic for database migrations.
 
-## 6. Minimal Technology Stack
+-   **Local Usage:**
+    -   Apply migrations: `alembic upgrade head`
+    -   Generate a new migration: `alembic revision --autogenerate -m "your message"`
 
-- Backend Language: Python 3.10+
-- Web Framework: FastAPI with Uvicorn
-- Database: PostgreSQL
-- ORM: SQLAlchemy 2.0 + Alembic
-- Frontend Interactivity: HTMX 1.9+
-- CSS Framework: Tailwind CSS (utility-first)
-- Templating: Jinja2
-- Authentication: passlib + bcrypt for password hashing
-
----
-
-## 7. Deployment on Railway
-
-1. Project Structure: Single Git repository containing the Python app.
-2. Dockerfile:
-   - Base image: python:3.10-slim (or newer compatible).
-   - Set working directory, install dependencies from requirements.txt.
-   - Expose port and run with Uvicorn.
-   - Example CMD: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`.
-3. Railway Services:
-   - Provision PostgreSQL from the Railway marketplace.
-   - Create a new service connected to this repo (with Dockerfile).
-4. Environment Variables:
-   - Railway injects `DATABASE_URL` automatically; the app must read it.
-   - Add `SECRET_KEY`, `SESSION_COOKIE_NAME`, and any other required settings.
-5. Build & Deploy:
-   - Push to the main branch to trigger build and deploy.
-   - Railway provides a public domain for access.
-
----
-
-## Getting Started (Local Development)
-
-1. Prerequisites
-   - Python 3.10+
-   - PostgreSQL 13+
-   - Node (optional) if building Tailwind locally
-
-2. Setup
-   - Create and activate a virtualenv.
-   - `pip install -r requirements.txt`
-   - Configure `.env` (DATABASE_URL, SECRET_KEY, etc.).
-   - Initialize DB: `alembic upgrade head`.
-
-3. Run
-   - `uvicorn app.main:app --reload`
-   - Open http://localhost:8000
-
----
-
-## Security & Privacy Notes
-
-- Use HTTPS in production (Railway + custom domain/SSL).
-- Hash passwords with bcrypt via passlib; never store plaintext.
-- Use secure, HttpOnly, SameSite cookies for session.
-- Enforce tenant isolation at query level (filter by homestay_id for owners/staff).
-
----
-
-## Roadmap (Post-MVP)
-
-- Payment gateway integration (Stripe) for self-serve plan management.
-- iCal export/import; channel manager integrations.
-- Reporting and analytics (occupancy, revenue, ADR).
-- Bulk actions on calendar; drag-and-drop booking edits.
-- Email/SMS notifications and reminders.
-
----
-
-## License
-
-Copyright © 2025. All rights reserved. Update with your chosen license.
-
-
----
-
-## 12. Monetization Strategy & Pricing (Detailed)
-
-This section outlines a sustainable, flexible monetization model for StayCal that fits small homestays and scales as they grow. It includes pricing tiers, add‑ons, usage limits and overages, billing operations, regional pricing (THB‑first), trials/discounts, plan enforcement, and success metrics.
-
-### 12.1 Pricing Model Overview
-
-- Core model: Subscription (monthly/annual) with plan‑based feature gates and limits.
-- Primary value axes:
-  - Rooms (inventory size and operational complexity)
-  - Seats (number of users/staff)
-  - Advanced features (automation, integrations, reporting)
-- Secondary monetization: Add‑ons (charged per property/tenant), usage‑based overages for optional services.
-
-Mermaid plan ladder (overview):
-
-```mermaid
-flowchart TB
-  A[Free] --> B[Basic]
-  B --> C[Pro]
-  click A "#free-tier-details" "Free tier details"
-  click B "#basic-tier-details" "Basic tier details"
-  click C "#pro-tier-details" "Pro tier details"
-
-  subgraph Features by tier
-  direction LR
-  F1[Rooms Limit]:::f --> F2[Seats Limit]:::f --> F3[Calendar + HTMX]:::f --> F4[Conflict Detection]:::f --> F5[FullCalendar UI]:::f
-  F6[Overview / Period Stats]:::p --> F7[Auto-Checkout]:::p --> F8[Export/Reports]:::p
-  F9[Integrations / iCal]:::pro --> F10[API Access]:::pro --> F11[Priority Support]:::pro
-  end
-
-  classDef f fill:#eef,stroke:#88f,color:#124;
-  classDef p fill:#efe,stroke:#6b6,color:#143;
-  classDef pro fill:#ffe,stroke:#cc4,color:#432;
-```
-
-### 12.2 Tiered Plans
-
-#### Free Tier (anchor)  <a id="free-tier-details"></a>
-- 1 user, up to 2 rooms.
-- Core calendar with conflict detection and booking CRUD.
-- Auto‑checkout and today’s operations widgets.
-- Community support only.
-- Purpose: frictionless onboarding; showcase core value.
-
-#### Basic Tier  <a id="basic-tier-details"></a>
-- Up to 5 users, up to 10 rooms.
-- Everything in Free, plus:
-  - Full Overview with current‑month default period stats.
-  - CSV export (bookings, rooms) and simple monthly report.
-  - Email support (best‑effort).
-- Suggested pricing (example):
-  - THB 249/month or THB 2,490/year (2 months free).
-
-#### Pro Tier  <a id="pro-tier-details"></a>
-- Unlimited users and rooms.
-- Everything in Basic, plus:
-  - iCal export (per‑room), manual import (MVP) with dedupe rules.
-  - Upcoming arrivals dashboard and occupancy KPIs.
-  - Priority support (response‑time target) and onboarding assistance.
-- Suggested pricing (example):
-  - THB 699/month or THB 6,990/year.
-
-Note: Exact pricing should be validated by interviews and willingness‑to‑pay tests; keep regional purchasing power in mind.
-
-### 12.3 Add‑ons (Optional upsells)
-- SMS notifications (per message, usage‑based; country‑specific rates).
-- WhatsApp / LINE notifications (per message or monthly bundle).
-- Branded PDF reports (per homestay, monthly add‑on).
-- Multi‑property portfolio view (if owner manages 2+ properties) — flat monthly.
-- Channel sync (future) — priced per connected channel.
-
-### 12.4 Usage Limits and Overage Strategy
-- Free limits enforced strictly; Basic/Pro enforce soft limits with warnings before hard cap.
-- Optional overage for message‑based add‑ons (pay‑as‑you‑go) with prepaid bundles to avoid surprise bills.
-- Clear UI indicators when nearing plan limits (e.g., 80% of rooms/seats limit).
-
-### 12.5 Billing, Trials, and Discounts
-- Billing provider: Stripe (recommended) for subscriptions, proration, invoices, and dunning.
-- Trials: 14‑day trial on Basic/Pro (no card initially for MVP; card‑required can be A/B tested later).
-- Coupons/Discounts: Intro offers, annual prepay discount (~16–20%), nonprofit/education discounts on request.
-- Proration: mid‑cycle upgrade charges prorated automatically; downgrades effective next cycle by default.
-- Invoicing: Email receipts; downloadable invoices inside the app (owner only).
-- Dunning: Stripe Smart Retries + email reminders; downgrade to Free after grace period if payment fails.
-
-Mermaid billing lifecycle:
-
-```mermaid
-flowchart LR
-  U[User selects plan] --> T{Trial?}
-  T -- yes --> TR[Start trial]
-  T -- no --> S[Start paid subscription]
-  TR --> A[Trial end]
-  A --> |auto-convert| S
-  S --> B{Payment success?}
-  B -- yes --> ACT[Active]
-  B -- no --> DNG[Dunning & Retries]
-  DNG --> |recover| ACT
-  DNG --> |fail grace| DWN[Auto downgrade to Free]
-```
-
-### 12.6 Plan Enforcement (Product side)
-- Authentication/Authorization:
-  - Plan and limits attached to tenant (homestay owner).
-  - Staff inherit owner’s plan limitations.
-- Enforcement examples:
-  - Room creation blocked beyond plan limit (with upgrade CTA).
-  - Seat invitations blocked beyond plan limit.
-  - Features behind flags (e.g., iCal export only on Pro).
-- Grace behaviors:
-  - Read‑only access to over‑limit data after downgrade.
-  - Continue calendar view, but block new booking creation if critical limits exceeded (configurable).
-
-### 12.7 Metrics & Analytics
-- Core SaaS metrics: MRR, Churn, LTV, ARPU, CAC (track via Stripe data + internal events).
-- Product metrics: activation rate (Homestay → Room → Booking), time‑to‑value, monthly active properties.
-- Expansion revenue: upsell adoption (Pro, Add‑ons), average rooms per tenant growth.
-- Instrument events (page views, CRUD actions, upgrades) with a lightweight analytics tool; ensure GDPR/PDPA compliance.
-
-### 12.8 Go‑to‑Market Levers
-- Self‑serve onboarding with Free tier + in‑product upgrade prompts.
-- Referral program: 1 free month for referrer + referee after first paid month.
-- Partnerships: local tourism boards, homestay associations; offer group discounts.
-- Content/SEO: “homestay booking calendar template”, “B&B calendar PMS” guides.
-
-### 12.9 Regional Pricing and Currency
-- Default display currency: THB; support multi‑currency pricing tables via Stripe Prices.
-- Localized tax handling (VAT) via Stripe Tax when expanding regions.
-- Accept local payment methods where possible for conversion uplift.
-
-### 12.10 Operational Notes (MVP → Production)
-- Begin with manual plan assignment (admin) while payments are wired up.
-- Introduce Stripe Checkout + Customer Portal for self‑serve upgrades/downgrades.
-- Background job to sync subscription status (webhooks) and enforce in app.
-- Maintain a changelog of plan/limit changes per tenant for support/audit.
-
-Mermaid system interaction (payments):
-
-```mermaid
-sequenceDiagram
-  participant U as User (Owner)
-  participant SC as StayCal App
-  participant ST as Stripe
-  U->>SC: Upgrade to Pro
-  SC->>ST: Create Checkout Session (price_id, customer)
-  ST-->>U: Hosted Checkout
-  U-->>ST: Payment details
-  ST-->>SC: Webhook: checkout.session.completed
-  SC->>SC: Activate Pro plan, update limits
-  SC-->>U: Confirmation (Pro active)
-  ST-->>SC: Webhook: invoice.payment_failed (later)
-  SC->>SC: Start dunning, set grace window
-```
-
-### 12.11 Example Pricing Summary (Draft)
-- Free: 1 user, 2 rooms. ฿0. Always free.
-- Basic: 5 users, 10 rooms. ฿249/mo or ฿2,490/yr.
-- Pro: Unlimited users & rooms. ฿699/mo or ฿6,990/yr.
-- Add‑ons: SMS/WhatsApp notifications (usage‑based), Branded Reports, Portfolio View, Channel Sync (future).
-
-> Note: All prices are placeholders for illustration; validate with local market research and adjust.
-
-
----
-
-## 13. To‑Do: Interesting Feature Ideas
-
-These are high‑leverage, user‑visible enhancements we’re considering post‑MVP. They complement (not duplicate) the existing Roadmap and Monetization sections.
-
-- Seasonal Pricing & Rate Plans
-  - Define seasons, weekend/weekday rules, and per‑room overrides; visualize rates on a mini rate calendar.
-- Extras, Packages, and Line‑Items
-  - Add optional upsells to a booking (breakfast, airport pickup, tours), auto‑sum totals, and include in reports.
-- Housekeeping & Turnover Board
-  - Auto‑generate cleaning tasks between stays, assign to staff, track statuses (To Do / In Progress / Done).
-- Smart Room Assignment (Optimization)
-  - Suggest the best room for a new booking to minimize gaps and maximize occupancy; offer alternatives if conflicts.
-- Maintenance & Blackout Dates
-  - Block rooms for maintenance with notes and attachments; reflect blocks on calendars and in availability APIs.
-- Guest CRM & Loyalty
-  - Profiles with stay history, tags, notes; quick rebook; PDPA/GDPR export; optional loyalty tiers.
-- Digital Pre‑Check‑in
-  - Pre‑arrival form, ID/photo upload, e‑signature for registration card; automate status transition to checked_in.
-- PWA & Offline Mode
-  - Installable web app with cached dashboards; queue actions while offline and sync when back online.
-- Multi‑language (i18n) & Locale Support
-  - UI translations (TH/EN first), localized dates/currency formats, right‑to‑left readiness where applicable.
-- Two‑Way Calendar Sync (Extended)
-  - Robust iCal/OTA two‑way sync with dedupe, conflict resolution UI, and background jobs.
-- Notifications Hub
-  - WhatsApp/LINE/SMS/email templates; triggers for reminders, upcoming arrivals, overdue check‑outs.
-- Webhooks & Public API
-  - Outbound webhooks for booking/room events; API keys per tenant with scopes; simple REST endpoints.
-- Advanced Analytics
-  - Occupancy, ADR, RevPAR, pickup/pace; channel mix; export as CSV/PDF with branded templates.
-- Accounting Exports
-  - Xero/QuickBooks CSV exports; basic mapping of revenue categories and taxes.
-- Roles & Permissions Matrix
-  - Granular capabilities beyond owner/staff (e.g., housekeeping, front desk); audit trail of critical changes.
-- Bulk Calendar Operations (Enhanced)
-  - Multi‑select move/cancel; resize bookings in FullCalendar; keyboard shortcuts for power users.
-- Print & Share
-  - PDF calendar snapshots and shareable read‑only links for owners/partners.
-- Dark Mode & Theming
-  - Per‑user theme preference with accessible color palettes; auto respect system dark mode.
-
-> Note: Items above are candidate ideas. Prioritization will be informed by user feedback, support volume, and impact on activation/retention.
-
-
-
-## Database Migrations (Alembic)
-
-The app now uses Alembic for database migrations.
-
-- Initial migration lives under `alembic/versions/20251005_0001_initial.py` and reflects the current models (users, homestays, rooms, bookings, subscriptions), including useful indexes and constraints.
-- Alembic reads the database URL from `DATABASE_URL` (or falls back to app settings).
-
-Local usage:
-- Ensure your virtualenv is active and deps installed: `pip install -r requirements.txt`
-- Set `DATABASE_URL` in your environment (optional; defaults to local SQLite: `sqlite:///./staycal.db`).
-- Apply migrations: `alembic upgrade head`
-- Generate a new migration (if you change models) using autogenerate as a starting point:
-  - `alembic revision --autogenerate -m "your message"`
-  - Review and edit the generated script, then `alembic upgrade head`.
-
-Docker/Railway:
-- The Docker image runs `alembic upgrade head` on startup (non-fatal if DB temporarily unavailable), then starts Uvicorn.
-- On Railway, ensure `DATABASE_URL` is set by the PostgreSQL service and the app service has that variable available.
-
-Fallback safety:
-- The application still executes a lightweight best-effort schema check in `ensure_mvp_schema()` for extra resilience in dev environments; Alembic is the primary mechanism for production.
-
-
-
-## Local Development with Docker Compose
-
-You can run StayCal locally with Docker Compose using PostgreSQL.
-
-Prerequisites:
-- Docker Desktop (or docker + docker compose plugin)
-
-Steps:
-1. Start the stack (app + PostgreSQL):
-   - docker compose up --build
-2. Open the app:
-   - http://localhost:8000
-3. Stop the stack:
-   - docker compose down
-
-Notes:
-- The database connection is provided via DATABASE_URL in docker-compose.yml: postgresql+psycopg://staycal:staycal@db:5432/staycal
-- Alembic migrations run automatically on container start (best-effort). The app also has a lightweight schema ensure for resilience.
-- Source code is mounted into the web container (./ -> /app) and Uvicorn runs with --reload for live code reload.
-- PostgreSQL data is persisted in a local named volume pgdata. To wipe local DB data, run: docker compose down -v
-- To use Cloudinary in Compose, set CLOUDINARY_URL in docker-compose.yml or pass it via an env file.
-- If you prefer using an .env file, you can uncomment the Compose DATABASE_URL example in .env.example and use `--env-file` with Docker Compose.
-
-
-## Mobile JSON API & Swagger
-
-A minimal JSON API is provided for the StayCal mobile application. It reuses the same session-cookie authentication as the web app.
-
-- Base path: /api/v1
-- Auth: session cookie set by POST /api/v1/auth/login
-- Swagger UI: /docs (look for the "mobile-api" tag)
-- Direct link to the mobile API section: /api/v1/docs (redirects to /docs#/mobile-api)
-- Health check: GET /healthz → {"status":"ok"}
-
-Authentication flow (with curl):
-
-1) Login and save cookie:
-
-```
-curl -s -X POST http://localhost:8000/api/v1/auth/login \
-  -H 'Content-Type: application/json' \
-  -d '{"email":"owner@example.com","password":"admin12345"}' \
-  -c cookies.txt | jq
-```
-
-2) Call authenticated endpoints using the saved cookie:
-
-```
-# Who am I
-curl -s http://localhost:8000/api/v1/auth/me -b cookies.txt | jq
-
-# Homestay info (or null if none)
-curl -s http://localhost:8000/api/v1/homestay -b cookies.txt | jq
-
-# Rooms for my homestay
-curl -s http://localhost:8000/api/v1/rooms -b cookies.txt | jq
-
-# Bookings (optionally filter with ?start=YYYY-MM-DD&end=YYYY-MM-DD&room_id=ID)
-curl -s 'http://localhost:8000/api/v1/bookings?start=2025-10-01&end=2025-10-31' -b cookies.txt | jq
-```
-
-3) Create / update / delete a booking:
-
-```
-# Create
-curl -s -X POST http://localhost:8000/api/v1/bookings \
-  -H 'Content-Type: application/json' \
-  -b cookies.txt \
-  -d '{
-        "room_id": 101,
-        "guest_name": "Jane Doe",
-        "guest_contact": "+66-800-123-456",
-        "start_date": "2025-10-07",
-        "end_date": "2025-10-10",
-        "price": 3500,
-        "status": "confirmed",
-        "comment": "Late arrival"
-      }' | jq
-
-# Update (PATCH)
-curl -s -X PATCH http://localhost:8000/api/v1/bookings/555 \
-  -H 'Content-Type: application/json' \
-  -b cookies.txt \
-  -d '{
-        "status": "checked_in",
-        "comment": "Guest arrived"
-      }' | jq
-
-# Delete
-curl -i -X DELETE http://localhost:8000/api/v1/bookings/555 -b cookies.txt
-```
-
-Notes:
-- API responses and request bodies include examples in Swagger UI.
-- Conflict detection prevents overlapping bookings per room; OTA iCal overlap checks are applied when a room has an external calendar URL configured.
-- The API enforces tenant isolation by scoping queries to the current user’s homestay.
+-   **Docker/Railway:**
+    -   On Railway, migrations are run automatically during the release phase via the `releaseCommand`.
+    -   For local Docker development, the `entrypoint.sh` script runs migrations before starting the application.

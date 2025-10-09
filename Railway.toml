@@ -2,13 +2,17 @@
 # Docs: https://docs.railway.app/deploy/config-as-code
 
 [project]
-name = "staycal"
+name = "gostaypro"
 
 [build]
 # Use the repo's Dockerfile for builds
 builder = "DOCKERFILE"
 
 [deploy]
+# The release command is run once on deploy, before the service is made available.
+# This is the recommended way to run database migrations.
+#releaseCommand = "alembic upgrade head"
+
 # Uvicorn app exposes a simple health endpoint
 healthcheckPath = "/healthz"
 # seconds

@@ -1,4 +1,16 @@
-# StayCal Dockerfile
+# Stage 1: Build the application with dependencies
+FROM python:3.10-slim as builder
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+WORKDIR /app
+
+# Install dependencies
+COPY requirements.txt ./
+RUN pip wheel --no-cache-dir --no-deps --wheel-dir /app/wheels -r requirements.txt
+
+# Stage 2: Create the final, lean image
 FROM python:3.10-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -6,16 +18,31 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-COPY requirements.txt ./
-RUN pip install --no-cache-dir -r requirements.txt
+# Create a non-root user
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 
-# Copy source and alembic files
-COPY app ./app
-COPY alembic.ini ./alembic.ini
-COPY alembic ./alembic
+# Copy dependencies from the builder stage
+COPY --from=builder /app/wheels /wheels
+COPY --from=builder /app/requirements.txt .
+RUN pip install --no-cache /wheels/*
+
+# Copy the application source and entrypoint
+COPY --chown=appuser:appgroup app ./app
+COPY --chown=appuser:appgroup alembic.ini ./alembic.ini
+COPY --chown=appuser:appgroup alembic ./alembic
+COPY --chown=appuser:appgroup entrypoint.sh ./
+
+# Make the entrypoint script executable
+RUN chmod +x ./entrypoint.sh
+
+# Switch to the non-root user
+USER appuser
 
 ENV PORT=8000
 EXPOSE 8000
 
-# Run migrations on startup; don't fail container if no DB yet
-CMD ["/bin/sh", "-c", "alembic upgrade head || true; uvicorn app.main:app --host 0.0.0.0 --port ${PORT}"]
+# Set the entrypoint to our script
+ENTRYPOINT ["./entrypoint.sh"]
+
+# The command to run the application
+CMD ["alembic upgrade head || true;", " uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "${PORT}"]
