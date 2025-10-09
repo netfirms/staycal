@@ -30,16 +30,10 @@ def upgrade() -> None:
     bind = op.get_bind()
     dialect_name = bind.dialect.name
 
-    # Define ENUM types
+    # Define ENUM types for use in table creation
     planname_enum = sa.Enum('free', 'basic', 'pro', name='planname')
     subscriptionstatus_enum = sa.Enum('active', 'cancelled', 'expired', name='subscriptionstatus')
     bookingstatus_enum = sa.Enum('tentative', 'confirmed', 'checked_in', 'checked_out', 'cancelled', name='bookingstatus')
-
-    # Create enums for Postgres if they don't exist
-    if dialect_name == 'postgresql':
-        planname_enum.create(bind, checkfirst=True)
-        subscriptionstatus_enum.create(bind, checkfirst=True)
-        bookingstatus_enum.create(bind, checkfirst=True)
 
     # users
     if not _has_table(bind, 'users'):
@@ -118,7 +112,6 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    # This remains largely the same, but we'll ensure it's robust.
     bind = op.get_bind()
     dialect_name = bind.dialect.name
 
