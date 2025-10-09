@@ -10,7 +10,6 @@ from __future__ import annotations
 from alembic import op
 import sqlalchemy as sa
 from sqlalchemy import inspect
-from datetime import datetime
 
 # revision identifiers, used by Alembic.
 revision = '20251005_0001'
@@ -31,20 +30,16 @@ def upgrade() -> None:
     bind = op.get_bind()
     dialect_name = bind.dialect.name
 
-    # Create enums for Postgres (if needed)
+    # Define ENUM types
+    planname_enum = sa.Enum('free', 'basic', 'pro', name='planname')
+    subscriptionstatus_enum = sa.Enum('active', 'cancelled', 'expired', name='subscriptionstatus')
+    bookingstatus_enum = sa.Enum('tentative', 'confirmed', 'checked_in', 'checked_out', 'cancelled', name='bookingstatus')
+
+    # Create enums for Postgres if they don't exist
     if dialect_name == 'postgresql':
-        try:
-            sa.Enum('free', 'basic', 'pro', name='planname').create(bind, checkfirst=True)
-        except Exception:
-            pass
-        try:
-            sa.Enum('active', 'cancelled', 'expired', name='subscriptionstatus').create(bind, checkfirst=True)
-        except Exception:
-            pass
-        try:
-            sa.Enum('tentative', 'confirmed', 'checked_in', 'checked_out', 'cancelled', name='bookingstatus').create(bind, checkfirst=True)
-        except Exception:
-            pass
+        planname_enum.create(bind, checkfirst=True)
+        subscriptionstatus_enum.create(bind, checkfirst=True)
+        bookingstatus_enum.create(bind, checkfirst=True)
 
     # users
     if not _has_table(bind, 'users'):
@@ -89,11 +84,6 @@ def upgrade() -> None:
 
     # bookings
     if not _has_table(bind, 'bookings'):
-        status_type = sa.Enum(
-            'tentative', 'confirmed', 'checked_in', 'checked_out', 'cancelled',
-            name='bookingstatus'
-        )
-        # on SQLite, Enum maps to VARCHAR by default safely
         op.create_table(
             'bookings',
             sa.Column('id', sa.Integer(), primary_key=True, nullable=False),
@@ -103,7 +93,7 @@ def upgrade() -> None:
             sa.Column('start_date', sa.Date(), nullable=False),
             sa.Column('end_date', sa.Date(), nullable=False),
             sa.Column('price', sa.Numeric(10, 2), nullable=True),
-            sa.Column('status', status_type, nullable=False, server_default='tentative'),
+            sa.Column('status', bookingstatus_enum, nullable=False, server_default='tentative'),
             sa.Column('comment', sa.Text(), nullable=True),
             sa.Column('image_url', sa.String(length=500), nullable=True),
             sa.ForeignKeyConstraint(['room_id'], ['rooms.id']),
@@ -111,69 +101,34 @@ def upgrade() -> None:
         op.create_index('ix_bookings_room_id', 'bookings', ['room_id'])
         op.create_index('ix_bookings_start_date', 'bookings', ['start_date'])
         op.create_index('ix_bookings_end_date', 'bookings', ['end_date'])
-        # composite index to speed overlaps
         op.create_index('ix_bookings_room_start_end', 'bookings', ['room_id', 'start_date', 'end_date'])
 
     # subscriptions
     if not _has_table(bind, 'subscriptions'):
-        plan_type = sa.Enum('free', 'basic', 'pro', name='planname')
-        status_type = sa.Enum('active', 'cancelled', 'expired', name='subscriptionstatus')
         op.create_table(
             'subscriptions',
             sa.Column('id', sa.Integer(), primary_key=True, nullable=False),
             sa.Column('owner_id', sa.Integer(), nullable=False),
-            sa.Column('plan_name', plan_type, nullable=False, server_default='free'),
-            sa.Column('status', status_type, nullable=False, server_default='active'),
+            sa.Column('plan_name', planname_enum, nullable=False, server_default='free'),
+            sa.Column('status', subscriptionstatus_enum, nullable=False, server_default='active'),
             sa.Column('expires_at', sa.DateTime(), nullable=True),
             sa.ForeignKeyConstraint(['owner_id'], ['users.id']),
         )
-        # unique owner per subscription (enforced by index for portability)
         op.create_unique_constraint('uq_subscription_owner', 'subscriptions', ['owner_id'])
-
-    # Ensure FKs if tables pre-existed without them (best-effort: skip to avoid errors)
-    # Indexes already handled above.
 
 
 def downgrade() -> None:
+    # This remains largely the same, but we'll ensure it's robust.
     bind = op.get_bind()
     dialect_name = bind.dialect.name
 
-    # Drop in dependency order
-    if _has_table(bind, 'subscriptions'):
-        try:
-            op.drop_constraint('uq_subscription_owner', 'subscriptions', type_='unique')
-        except Exception:
-            pass
-        op.drop_table('subscriptions')
+    op.drop_table('subscriptions')
+    op.drop_table('bookings')
+    op.drop_table('rooms')
+    op.drop_table('homestays')
+    op.drop_table('users')
 
-    if _has_table(bind, 'bookings'):
-        try:
-            op.drop_index('ix_bookings_room_start_end', table_name='bookings')
-            op.drop_index('ix_bookings_end_date', table_name='bookings')
-            op.drop_index('ix_bookings_start_date', table_name='bookings')
-            op.drop_index('ix_bookings_room_id', table_name='bookings')
-        except Exception:
-            pass
-        op.drop_table('bookings')
-
-    if _has_table(bind, 'rooms'):
-        op.drop_table('rooms')
-
-    if _has_table(bind, 'homestays'):
-        op.drop_table('homestays')
-
-    if _has_table(bind, 'users'):
-        try:
-            op.drop_index('ix_users_email', table_name='users')
-            op.drop_index('ix_users_id', table_name='users')
-        except Exception:
-            pass
-        op.drop_table('users')
-
-    # Drop enums on Postgres
     if dialect_name == 'postgresql':
-        for enum_name in ('bookingstatus', 'subscriptionstatus', 'planname'):
-            try:
-                sa.Enum(name=enum_name).drop(bind, checkfirst=True)
-            except Exception:
-                pass
+        sa.Enum(name='bookingstatus').drop(bind, checkfirst=True)
+        sa.Enum(name='subscriptionstatus').drop(bind, checkfirst=True)
+        sa.Enum(name='planname').drop(bind, checkfirst=True)

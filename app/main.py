@@ -5,7 +5,7 @@ from fastapi.responses import RedirectResponse
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from .limiter import limiter
-from .db import Base, engine, ensure_mvp_schema, SessionLocal
+from .db import SessionLocal
 from . import models  # ensure models are imported so tables are registered
 from .routers import auth_views, app_views, calendar_htmx_views, admin_views, public_views
 from .routers import rooms_views, bookings_views, homestays_views
@@ -26,10 +26,8 @@ for _name in ("uvicorn", "uvicorn.error", "uvicorn.access"):
 logger = logging.getLogger("app.startup")
 logger.info("Starting %s (DEBUG=%s)", settings.APP_NAME, getattr(settings, "DEBUG", False))
 
-# Create tables for MVP (use Alembic in production)
-Base.metadata.create_all(bind=engine)
-# Best-effort lightweight migrations (e.g., add missing columns for existing DBs)
-ensure_mvp_schema()
+# NOTE: Schema creation is now handled exclusively by Alembic migrations.
+# The Base.metadata.create_all() call has been removed to prevent race conditions.
 
 # Bootstrap a default admin user if none exists
 def _ensure_default_admin():
