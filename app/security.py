@@ -23,7 +23,7 @@ def set_session(response: Response, user_id: int):
         value=token,
         httponly=True,
         samesite="lax",
-        secure=False,
+        secure=settings.ENVIRONMENT == "production",  # Set secure flag based on environment
         path="/",
     )
 

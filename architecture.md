@@ -7,25 +7,26 @@ flowchart LR
   subgraph Client
     A[Browser\nHTML + CSS + HTMX + FullCalendar]
   end
-
+  
   subgraph Railway[Railway Deployment]
     subgraph App[FastAPI Monolith]
       B[FastAPI Routers\n- public_views\n- auth_views\n- app_views\n- rooms_views\n- bookings_views\n- homestays_views\n- calendar_htmx_views\n- admin_views]
       C[Jinja2 Templates\nSSR + HTMX partials]
-      D[Security\nSession cookie]
+      D["Security Middleware\n (Session cookie)"]
       E[SQLAlchemy ORM]
       G[Auto-Checkout Service]
     end
-
+    
     F[(PostgreSQL / SQLite)]
   end
-
-  A -- HTMX GET/POST --> B
-  A -- FullCalendar events JSON --> B
+  
+  A -- "HTTP Request (GET/POST)" --> D
+  D -- Authenticated Request --> B
   B -- Render --> C
   B -- Query/Commit --> E
   E -- Connection --> F
   B -- trigger --> G
+  B -- "SSE (Server-Sent Events)" --> A
 ```
 
 ### Low-Level Architecture (Data Model) Diagram
