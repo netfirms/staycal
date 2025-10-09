@@ -128,6 +128,7 @@ erDiagram
     role varchar
     homestay_id int
     created_at timestamp
+    currency varchar
   }
   SUBSCRIPTIONS {
     id int PK
@@ -190,7 +191,7 @@ This script sets up the virtual environment, installs dependencies, and starts t
 1.  Create and activate a virtualenv: `python -m venv .venv && source .venv/bin/activate`
 2.  Install dependencies: `pip install -r requirements.txt`
 3.  Copy `.env.example` to `.env` and configure variables.
-4.  Run database migrations: `alembic upgrade head`
+4.  **Run database migrations:** `alembic upgrade head`
 5.  Start the server: `uvicorn app.main:app --reload`
 
 ---

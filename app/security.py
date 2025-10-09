@@ -18,12 +18,14 @@ def verify_password(password: str, hashed: str) -> bool:
 
 def set_session(response: Response, user_id: int):
     token = serializer.dumps({"uid": user_id})
+    # Use getattr for resilience, defaulting to 'development' if the setting is missing.
+    is_production = getattr(settings, "ENVIRONMENT", "development") == "production"
     response.set_cookie(
         key=settings.SESSION_COOKIE_NAME,
         value=token,
         httponly=True,
         samesite="lax",
-        secure=settings.ENVIRONMENT == "production",  # Set secure flag based on environment
+        secure=is_production,
         path="/",
     )
 

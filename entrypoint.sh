@@ -3,10 +3,17 @@
 # Exit immediately if a command exits with a non-zero status.
 set -e
 
-# This script can be used for pre-start tasks.
-# For now, it just executes the main command.
+# This script is the entrypoint for the Docker container.
+# It ensures dependencies are installed and the database is migrated
+# before starting the main application.
 
-echo "Starting application..."
+echo "Installing/updating dependencies..."
+pip install -r requirements.txt
 
-# Execute the command passed to this script (the Uvicorn server command)
+echo "Running database migrations..."
+alembic upgrade head
+
+echo "Setup complete. Starting application..."
+
+# Execute the command passed to this script (e.g., the uvicorn server command)
 exec "$@"

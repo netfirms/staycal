@@ -1,7 +1,7 @@
 import logging
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import RedirectResponse, JSONResponse
+from fastapi.responses import RedirectResponse
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from .limiter import limiter
@@ -75,19 +75,10 @@ app = FastAPI(
     ],
 )
 
+# Add the limiter to the app state
 app.state.limiter = limiter
+# Add the exception handler for rate limit exceeded errors
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
-
-
-@app.middleware("http")
-async def rate_limit_middleware(request: Request, call_next):
-    try:
-        # Use the limiter from the app state
-        await app.state.limiter.check(request)
-    except RateLimitExceeded as e:
-        return JSONResponse(status_code=429, content={"detail": f"Rate limit exceeded: {e.detail}"})
-    return await call_next(request)
-
 
 app.include_router(public_views.router)
 app.include_router(auth_views.router)

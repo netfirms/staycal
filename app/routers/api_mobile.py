@@ -312,7 +312,7 @@ def api_create_booking(request: Request, payload: BookingCreateIn, db: Session =
 
 
 @router.patch("/bookings/{booking_id}", response_model=BookingOut)
-def api_update_booking(request: Request, booking_id: int, payload: BookingUpdateIn, db: Session = Depends(get_d_b)):
+def api_update_booking(request: Request, booking_id: int, payload: BookingUpdateIn, db: Session = Depends(get_db)):
     user = require_user(request, db)
     b = db.query(Booking).get(booking_id)
     if not b:
