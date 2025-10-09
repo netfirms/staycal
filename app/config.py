@@ -30,5 +30,10 @@ class Settings:
     # For v3 only
     RECAPTCHA_MIN_SCORE: float = float(os.getenv("RECAPTCHA_MIN_SCORE", "0.5"))
     RECAPTCHA_EXPECTED_ACTION: str = os.getenv("RECAPTCHA_EXPECTED_ACTION", "login")
+    # Rate Limiting
+    RATE_LIMIT_ENABLED: bool = os.getenv("RATE_LIMIT_ENABLED", "true").lower() == "true"
+    RATE_LIMIT_DEFAULT: str = os.getenv("RATE_LIMIT_DEFAULT", "100/minute")
+    RATE_LIMIT_AUTH: str = os.getenv("RATE_LIMIT_AUTH", "5/minute")
+    RATE_LIMIT_AUTH_API: str = os.getenv("RATE_LIMIT_AUTH_API", "10/minute")
 
 settings = Settings()

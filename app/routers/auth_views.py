@@ -6,6 +6,7 @@ from ..db import get_db
 from ..models import User
 from ..security import hash_password, verify_password, set_session, clear_session
 from ..config import settings
+from ..limiter import limiter
 import json
 from urllib import request as urlrequest
 from urllib.parse import urlencode
@@ -47,6 +48,7 @@ def _verify_recaptcha(token: str | None, remote_ip: str | None) -> tuple[bool, d
         return False, {"exception": str(e)}
 
 @router.post("/login")
+@limiter.limit(settings.RATE_LIMIT_AUTH)
 def login(request: Request, email: str = Form(...), password: str = Form(...), g_recaptcha_response: str | None = Form(None, alias="g-recaptcha-response"), db: Session = Depends(get_db)):
     # Check reCAPTCHA if configured (site key and secret must be set)
     site_key = getattr(settings, "RECAPTCHA_SITE_KEY", "")
@@ -98,6 +100,7 @@ def register_form(request: Request):
     return templates.TemplateResponse("auth/register.html", {"request": request, "recaptcha_site_key": site_key, "recaptcha_version": version, "recaptcha_action": action})
 
 @router.post("/register")
+@limiter.limit(settings.RATE_LIMIT_AUTH)
 def register(request: Request, email: str = Form(...), password: str = Form(...), g_recaptcha_response: str | None = Form(None, alias="g-recaptcha-response"), db: Session = Depends(get_db)):
     # Enforce reCAPTCHA when configured
     site_key = getattr(settings, "RECAPTCHA_SITE_KEY", "")

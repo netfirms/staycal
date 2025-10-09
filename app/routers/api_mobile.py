@@ -9,6 +9,8 @@ from ..models import User, Homestay, Room, Booking, BookingStatus
 from ..security import get_current_user_id, set_session, verify_password, clear_session
 from ..services.auto_checkout import run_auto_checkout
 from ..services.ical import fetch_ota_events, overlaps_ota
+from ..limiter import limiter
+from ..config import settings
 
 router = APIRouter(prefix="/api/v1", tags=["mobile-api"]) 
 
@@ -185,7 +187,8 @@ def require_user(request: Request, db: Session) -> User:
 # ==== Auth Endpoints ====
 
 @router.post("/auth/login", response_model=UserOut)
-def api_login(payload: LoginIn, response: Response, db: Session = Depends(get_db)):
+@limiter.limit(settings.RATE_LIMIT_AUTH_API)
+def api_login(request: Request, payload: LoginIn, response: Response, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == payload.email).first()
     if not user or not verify_password(payload.password, user.hashed_password):
         raise HTTPException(status_code=400, detail="Invalid email or password")
@@ -309,7 +312,7 @@ def api_create_booking(request: Request, payload: BookingCreateIn, db: Session =
 
 
 @router.patch("/bookings/{booking_id}", response_model=BookingOut)
-def api_update_booking(request: Request, booking_id: int, payload: BookingUpdateIn, db: Session = Depends(get_db)):
+def api_update_booking(request: Request, booking_id: int, payload: BookingUpdateIn, db: Session = Depends(get_d_b)):
     user = require_user(request, db)
     b = db.query(Booking).get(booking_id)
     if not b:

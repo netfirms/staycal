@@ -1,7 +1,10 @@
 import logging
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, JSONResponse
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from .limiter import limiter
 from .db import Base, engine, ensure_mvp_schema, SessionLocal
 from . import models  # ensure models are imported so tables are registered
 from .routers import auth_views, app_views, calendar_htmx_views, admin_views, public_views
@@ -72,6 +75,20 @@ app = FastAPI(
     ],
 )
 
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+
+@app.middleware("http")
+async def rate_limit_middleware(request: Request, call_next):
+    try:
+        # Use the limiter from the app state
+        await app.state.limiter.check(request)
+    except RateLimitExceeded as e:
+        return JSONResponse(status_code=429, content={"detail": f"Rate limit exceeded: {e.detail}"})
+    return await call_next(request)
+
+
 app.include_router(public_views.router)
 app.include_router(auth_views.router)
 app.include_router(app_views.router)
@@ -90,12 +107,14 @@ app.include_router(api_mobile.router)
 app.mount("/static", StaticFiles(directory="app/static", check_dir=False), name="static")
 
 @app.get("/healthz")
+@limiter.exempt
 def healthz():
     return {"status": "ok"}
 
 
 # Convenience: Mobile API Swagger shortcut
 @app.get("/api/v1/docs", include_in_schema=False)
+@limiter.exempt
 def mobile_docs_redirect():
     # Jump to the mobile-api tag section in Swagger UI
     return RedirectResponse(url="/docs#/mobile-api")
