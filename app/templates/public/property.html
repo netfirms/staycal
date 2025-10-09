@@ -1,0 +1,80 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="max-w-5xl mx-auto">
+  <div class="flex items-center justify-between mb-4">
+    <div>
+      <h1 class="text-2xl font-semibold">{{ homestay.name }}</h1>
+      {% if homestay.address %}
+      <p class="text-gray-600 text-sm">{{ homestay.address }}</p>
+      {% endif %}
+    </div>
+    <div>
+      <a href="/" class="text-sm text-blue-700 hover:underline">Home</a>
+    </div>
+  </div>
+
+  {% if homestay.image_url %}
+  <div class="mb-4">
+    <img src="{{ homestay.image_url }}" alt="{{ homestay.name }}" class="w-full max-h-72 object-cover rounded-lg border" />
+  </div>
+  {% endif %}
+
+  {% if rooms|length == 0 %}
+    <div class="p-4 bg-yellow-50 border rounded">No rooms configured for this property.</div>
+  {% else %}
+    <div class="flex items-center justify-between mb-2">
+      <form method="get" class="flex items-center gap-2">
+        <label class="text-sm text-gray-600">Room</label>
+        <select name="room_id" class="border rounded p-1 text-sm" onchange="this.form.submit()">
+          {% for r in rooms %}
+            <option value="{{ r.id }}" {% if r.id == room_id %}selected{% endif %}>{{ r.name }}</option>
+          {% endfor %}
+        </select>
+      </form>
+      <div class="text-sm text-gray-600">
+        {{ month_label }}
+      </div>
+    </div>
+
+    <div id="public-calendar" class="bg-white border rounded p-2"></div>
+
+    <script>
+      (function(){
+        if (!window.FullCalendar) { return; }
+        const el = document.getElementById('public-calendar');
+        if (!el) return;
+        // Compute initial date from provided year/month or today
+        var y = {{ year }};
+        var m = {{ month }};
+        function pad(n){ return (n < 10 ? '0' + n : '' + n); }
+        var initialDate = String(y) + '-' + pad(m) + '-01';
+        var roomId = {{ room_id }};
+        const calendar = new FullCalendar.Calendar(el, {
+          initialDate: initialDate,
+          height: 'auto',
+          headerToolbar: {
+            left: 'prev,next today',
+            center: 'title',
+            right: 'dayGridMonth,listMonth'
+          },
+          navLinks: false,
+          selectable: false,
+          editable: false,
+          dayMaxEvents: true,
+          events: function(info, success, failure){
+            fetch(`/public/calendar/events?room_id=${roomId}&start=${info.startStr}&end=${info.endStr}`)
+              .then(r => { if (!r.ok) throw new Error('Failed to load events'); return r.json(); })
+              .then(events => success(events))
+              .catch(err => failure(err));
+          },
+          eventClick: function(info){
+            // Public view: do nothing (read-only)
+            info.jsEvent.preventDefault();
+          }
+        });
+        calendar.render();
+      })();
+    </script>
+  {% endif %}
+</div>
+{% endblock %}

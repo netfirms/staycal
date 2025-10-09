@@ -18,6 +18,7 @@ class User(Base):
     role: Mapped[str] = mapped_column(String(20), default=UserRole.OWNER, nullable=False)
     homestay_id: Mapped[int | None] = mapped_column(ForeignKey("homestays.id"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    currency: Mapped[str] = mapped_column(String(8), default="USD", nullable=False)
 
     # User is staff/member of a homestay via users.homestay_id -> homestays.id
     homestay: Mapped[Optional["Homestay"]] = relationship(back_populates="users", foreign_keys=[homestay_id])

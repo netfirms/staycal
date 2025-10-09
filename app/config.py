@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 class Settings:
-    APP_NAME: str = "StayCal"
+    APP_NAME: str = "GoStayPro"
     SECRET_KEY: str = os.getenv("SECRET_KEY", "dev-secret-key-change-me")
     SESSION_COOKIE_NAME: str = os.getenv("SESSION_COOKIE_NAME", "staycal_session")
     DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:///./staycal.db")
@@ -19,5 +19,16 @@ class Settings:
     PLAN_BASIC_YEARLY: float = float(os.getenv("PLAN_BASIC_YEARLY", "2490"))
     PLAN_PRO_MONTHLY: float = float(os.getenv("PLAN_PRO_MONTHLY", "699"))
     PLAN_PRO_YEARLY: float = float(os.getenv("PLAN_PRO_YEARLY", "6990"))
+    # Upload constraints
+    UPLOAD_IMAGE_MAX_MB: int = int(os.getenv("UPLOAD_IMAGE_MAX_MB", "5"))
+    UPLOAD_IMAGE_MAX_BYTES: int = UPLOAD_IMAGE_MAX_MB * 1024 * 1024
+    # reCAPTCHA (optional)
+    RECAPTCHA_SITE_KEY: str = os.getenv("RECAPTCHA_SITE_KEY", "")
+    RECAPTCHA_SECRET_KEY: str = os.getenv("RECAPTCHA_SECRET_KEY", "")
+    # reCAPTCHA version: "v2" (checkbox) or "v3" (score-based)
+    RECAPTCHA_VERSION: str = os.getenv("RECAPTCHA_VERSION", "v3").lower()
+    # For v3 only
+    RECAPTCHA_MIN_SCORE: float = float(os.getenv("RECAPTCHA_MIN_SCORE", "0.5"))
+    RECAPTCHA_EXPECTED_ACTION: str = os.getenv("RECAPTCHA_EXPECTED_ACTION", "login")
 
 settings = Settings()

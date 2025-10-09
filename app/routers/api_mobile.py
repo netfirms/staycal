@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from ..db import get_db
 from ..models import User, Homestay, Room, Booking, BookingStatus
-from ..security import get_current_user_id, set_session, verify_password
+from ..security import get_current_user_id, set_session, verify_password, clear_session
 from ..services.auto_checkout import run_auto_checkout
 from ..services.ical import fetch_ota_events, overlaps_ota
 
@@ -35,6 +35,7 @@ class HomestayOut(BaseModel):
     id: int
     name: str
     address: Optional[str] = None
+    image_url: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -42,7 +43,8 @@ class HomestayOut(BaseModel):
             "example": {
                 "id": 10,
                 "name": "Palm Breeze Homestay",
-                "address": "123 Beach Rd, Phuket"
+                "address": "123 Beach Rd, Phuket",
+                "image_url": "https://res.cloudinary.com/demo/image/upload/v1690000000/staycal/homestays/cover.jpg"
             }
         }
 
@@ -52,6 +54,7 @@ class RoomOut(BaseModel):
     name: str
     capacity: Optional[int] = None
     default_rate: Optional[float] = None
+    image_url: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -60,7 +63,8 @@ class RoomOut(BaseModel):
                 "id": 101,
                 "name": "Deluxe Double Room",
                 "capacity": 2,
-                "default_rate": 1200.0
+                "default_rate": 1200.0,
+                "image_url": "https://res.cloudinary.com/demo/image/upload/v1690000000/staycal/rooms/room.jpg"
             }
         }
 
@@ -157,6 +161,15 @@ class BookingUpdateIn(BaseModel):
         }
 
 
+class SelectHomestayIn(BaseModel):
+    homestay_id: int
+
+    class Config:
+        json_schema_extra = {
+            "example": {"homestay_id": 10}
+        }
+
+
 # ==== Helpers ====
 
 def require_user(request: Request, db: Session) -> User:
@@ -180,6 +193,13 @@ def api_login(payload: LoginIn, response: Response, db: Session = Depends(get_db
     return user
 
 
+@router.post("/auth/logout")
+def api_logout(response: Response):
+    """Clear session cookie for mobile clients."""
+    clear_session(response)
+    return {"ok": True}
+
+
 @router.get("/auth/me", response_model=UserOut)
 def api_me(request: Request, db: Session = Depends(get_db)):
     user = require_user(request, db)
@@ -193,6 +213,28 @@ def api_homestay(request: Request, db: Session = Depends(get_db)):
         return None
     hs = db.query(Homestay).get(user.homestay_id)
     return hs
+
+
+@router.post("/homestay/select", response_model=UserOut)
+def api_select_homestay(request: Request, payload: SelectHomestayIn, db: Session = Depends(get_db)):
+    user = require_user(request, db)
+    hs = db.query(Homestay).get(payload.homestay_id)
+    if not hs:
+        raise HTTPException(status_code=404, detail="Homestay not found")
+    # Authorization: admin can switch freely; owner must own it; staff cannot switch to arbitrary
+    if user.role == "admin":
+        pass
+    elif user.role == "owner":
+        if hs.owner_id != user.id:
+            raise HTTPException(status_code=403, detail="Forbidden")
+    else:
+        # staff can only keep their current homestay
+        if user.homestay_id not in (None, hs.id):
+            raise HTTPException(status_code=403, detail="Forbidden")
+    user.homestay_id = hs.id
+    db.commit()
+    db.refresh(user)
+    return user
 
 
 # ==== Rooms ====

@@ -1,6 +1,6 @@
-# StayCal — Property Room & Booking Management (Up-to-date Overview)
+# GoStayPro — Property Room & Booking Management (Up-to-date Overview)
 
-StayCal is a calendar-first, multi-tenant room management and booking web application designed for small properties, guesthouses, and B&Bs. The philosophy is simplicity, affordability, and a powerful, visually-driven calendar interface. This README reflects the current implemented codebase and how to run and deploy it.
+GoStayPro is a calendar-first, multi-tenant room management and booking web application designed for small properties, guesthouses, and B&Bs. The philosophy is simplicity, affordability, and a powerful, visually-driven calendar interface. This README reflects the current implemented codebase and how to run and deploy it.
 
 ---
 

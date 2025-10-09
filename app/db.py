@@ -52,11 +52,13 @@ def ensure_mvp_schema():
                     conn.exec_driver_sql("ALTER TABLE rooms ADD COLUMN image_url VARCHAR(500);")
                 if "ota_ical_url" not in col_names:
                     conn.exec_driver_sql("ALTER TABLE rooms ADD COLUMN ota_ical_url VARCHAR(500);")
-                # users table - add missing homestay_id if needed (older DBs)
+                # users table - add missing columns if needed (older DBs)
                 res = conn.exec_driver_sql("PRAGMA table_info(users);")
                 col_names = [row[1] for row in res]
                 if "homestay_id" not in col_names:
                     conn.exec_driver_sql("ALTER TABLE users ADD COLUMN homestay_id INTEGER;")
+                if "currency" not in col_names:
+                    conn.exec_driver_sql("ALTER TABLE users ADD COLUMN currency VARCHAR(8) DEFAULT 'USD' NOT NULL;")
                 # indexes for faster lookups (IF NOT EXISTS is supported by SQLite)
                 conn.exec_driver_sql(
                     "CREATE INDEX IF NOT EXISTS ix_bookings_room_id ON bookings(room_id);"
@@ -84,6 +86,8 @@ def ensure_mvp_schema():
                     "ALTER TABLE rooms ADD COLUMN IF NOT EXISTS image_url VARCHAR(500);",
                     "ALTER TABLE rooms ADD COLUMN IF NOT EXISTS ota_ical_url VARCHAR(500);",
                     "ALTER TABLE users ADD COLUMN IF NOT EXISTS homestay_id INTEGER;",
+                    "ALTER TABLE users ADD COLUMN IF NOT EXISTS currency VARCHAR(8) DEFAULT 'USD' NOT NULL;",
+                    "ALTER TABLE users ALTER COLUMN currency SET DEFAULT 'USD';",
                 ]:
                     try:
                         conn.exec_driver_sql(ddl)

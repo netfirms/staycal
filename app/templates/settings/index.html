@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1 class="text-2xl font-semibold mb-4">User Settings</h1>
+<div class="max-w-xl bg-white p-4 rounded-xl shadow-sm border">
+  {% if error %}
+    <div class="mb-3 p-2 rounded bg-red-50 text-red-800 text-sm">{{ error }}</div>
+  {% endif %}
+  {% if msg %}
+    <div class="mb-3 p-2 rounded bg-green-50 text-green-800 text-sm">{{ msg }}</div>
+  {% endif %}
+  <form method="post" action="/app/settings/" class="space-y-4">
+    <div>
+      <label class="block text-sm font-medium">Currency</label>
+      <select name="currency" class="border rounded w-full p-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+        {% for code, label in currency_options %}
+          <option value="{{ code }}" {% if user.currency == code %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+      <p class="text-xs text-gray-500 mt-1">Used for displaying prices across the app. Default is THB.</p>
+    </div>
+    <div>
+      <button class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Save Settings</button>
+      <a href="/app" class="ml-2 px-3 py-2 border rounded">Back</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

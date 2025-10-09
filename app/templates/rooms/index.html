@@ -32,6 +32,9 @@
             <td class="py-2 px-2 text-right whitespace-nowrap">
               <a href="/app/rooms/{{ r.id }}/edit" class="px-2 py-1 text-blue-700 hover:underline">Edit</a>
               <a href="/app/bookings/new?room_id={{ r.id }}" class="px-2 py-1 text-green-700 hover:underline">New Booking</a>
+              {% if user and user.homestay_id %}
+                <a href="/public/{{ user.homestay_id }}?room_id={{ r.id }}" target="_blank" rel="noopener" class="px-2 py-1 text-gray-700 hover:underline">Public</a>
+              {% endif %}
               <form method="post" action="/app/rooms/{{ r.id }}/delete" class="inline" onsubmit="return confirm('Delete room? Bookings will be deleted too.');">
                 <button class="px-2 py-1 text-red-700 hover:underline">Delete</button>
               </form>

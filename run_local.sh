@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# StayCal local run helper
+# GoStayPro local run helper
 # - Creates a virtual environment in .venv if missing
 # - Installs dependencies from requirements.txt
 # - Creates a local .env from .env.example if missing
@@ -51,5 +51,5 @@ else
   echo "Using DATABASE_URL from environment."
 fi
 
-echo "Starting StayCal locally at http://127.0.0.1:${PORT} (reload enabled)"
+echo "Starting GoStayPro locally at http://127.0.0.1:${PORT} (reload enabled)"
 exec uvicorn app.main:app --host 127.0.0.1 --port "${PORT}" --reload

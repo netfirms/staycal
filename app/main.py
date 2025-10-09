@@ -1,3 +1,4 @@
+import logging
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import RedirectResponse
@@ -5,9 +6,22 @@ from .db import Base, engine, ensure_mvp_schema, SessionLocal
 from . import models  # ensure models are imported so tables are registered
 from .routers import auth_views, app_views, calendar_htmx_views, admin_views, public_views
 from .routers import rooms_views, bookings_views, homestays_views
+from .routers import settings_views
 from .config import settings
 from .models import User
 from .security import hash_password
+
+# --- Logging configuration ---
+_level = logging.DEBUG if getattr(settings, "DEBUG", False) else logging.INFO
+logging.basicConfig(
+    level=_level,
+    format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
+)
+# Align uvicorn loggers with our level (useful under Docker Compose)
+for _name in ("uvicorn", "uvicorn.error", "uvicorn.access"):
+    logging.getLogger(_name).setLevel(_level)
+logger = logging.getLogger("app.startup")
+logger.info("Starting %s (DEBUG=%s)", settings.APP_NAME, getattr(settings, "DEBUG", False))
 
 # Create tables for MVP (use Alembic in production)
 Base.metadata.create_all(bind=engine)
@@ -40,10 +54,10 @@ def _ensure_default_admin():
 _ensure_default_admin()
 
 app = FastAPI(
-    title="StayCal",
+    title=settings.APP_NAME,
     version="0.1.0",
     description=(
-        "StayCal: Calendar-first homestay management.\n\n"
+        f"{settings.APP_NAME}: Calendar-first homestay management.\n\n"
         "Swagger UI includes both web and mobile endpoints. "
         "Use the 'mobile-api' tag to view the Mobile JSON API."
     ),
@@ -51,7 +65,7 @@ app = FastAPI(
         {
             "name": "mobile-api",
             "description": (
-                "Mobile JSON API for the StayCal mobile application. "
+                f"Mobile JSON API for the {settings.APP_NAME} mobile application. "
                 "Session-cookie based auth. Endpoints under /api/v1."
             ),
         }
@@ -66,6 +80,7 @@ app.include_router(admin_views.router)
 app.include_router(rooms_views.router)
 app.include_router(bookings_views.router)
 app.include_router(homestays_views.router)
+app.include_router(settings_views.router)
 
 # Mobile JSON API
 from .routers import api_mobile

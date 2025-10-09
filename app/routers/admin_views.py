@@ -16,23 +16,75 @@ templates = Jinja2Templates(directory="app/templates")
 
 @router.get("/login", response_class=HTMLResponse)
 def admin_login_form(request: Request):
-    return templates.TemplateResponse("admin/login.html", {"request": request})
+    site_key = getattr(settings, "RECAPTCHA_SITE_KEY", "")
+    version = "v3"
+    action = "admin_login"
+    return templates.TemplateResponse("admin/login.html", {"request": request, "recaptcha_site_key": site_key, "recaptcha_version": version, "recaptcha_action": action})
+
+
+def _verify_recaptcha_admin(token: str | None, remote_ip: str | None) -> tuple[bool, dict]:
+    secret = getattr(settings, "RECAPTCHA_SECRET_KEY", "")
+    if not secret:
+        return True, {"skipped": True}
+    if not token:
+        return False, {"error": "missing-token"}
+    from urllib.parse import urlencode
+    from urllib import request as urlrequest
+    import json
+    data = urlencode({"secret": secret, "response": token, "remoteip": remote_ip or ""}).encode()
+    try:
+        req = urlrequest.Request("https://www.google.com/recaptcha/api/siteverify", data=data)
+        with urlrequest.urlopen(req, timeout=5) as resp:
+            payload = resp.read()
+            res = json.loads(payload.decode("utf-8"))
+            return bool(res.get("success")), res
+    except Exception as e:
+        if getattr(settings, "DEBUG", False):
+            return True, {"debug": True, "exception": str(e)}
+        return False, {"exception": str(e)}
 
 
 @router.post("/login")
-def admin_login(request: Request, email: str = Form(...), password: str = Form(...), db: Session = Depends(get_db)):
+def admin_login(request: Request, email: str = Form(...), password: str = Form(...), g_recaptcha_response: str | None = Form(None, alias="g-recaptcha-response"), db: Session = Depends(get_db)):
+    # reCAPTCHA (optional, enforced if keys configured)
+    site_key = getattr(settings, "RECAPTCHA_SITE_KEY", "")
+    secret_key = getattr(settings, "RECAPTCHA_SECRET_KEY", "")
+    version = "v3"
+    action = "admin_login"
+    if site_key and secret_key:
+        client_ip = request.client.host if request.client else None
+        ok, res = _verify_recaptcha_admin(g_recaptcha_response, client_ip)
+        if ok:
+            expected_action = "admin_login"
+            min_score = float(getattr(settings, "RECAPTCHA_MIN_SCORE", 0.5))
+            if res.get("action") and res.get("action") != expected_action:
+                ok = False
+            score_val = res.get("score")
+            if score_val is not None:
+                try:
+                    score = float(score_val)
+                except Exception:
+                    score = None
+                if score is not None and score < min_score:
+                    ok = False
+        if not ok:
+            return templates.TemplateResponse(
+                "admin/login.html",
+                {"request": request, "error": "reCAPTCHA verification failed. Please try again.", "recaptcha_site_key": site_key, "recaptcha_version": version, "recaptcha_action": action},
+                status_code=400,
+            )
     user = db.query(User).filter(User.email == email).first()
     from ..security import verify_password, set_session
     if not user or not verify_password(password, user.hashed_password):
         return templates.TemplateResponse(
             "admin/login.html",
-            {"request": request, "error": "Invalid email or password"},
+            {"request": request, "error": "Invalid email or password", "recaptcha_site_key": site_key, "recaptcha_version": version, "recaptcha_action": action},
             status_code=400,
         )
     if user.role != "admin":
         return templates.TemplateResponse(
             "admin/login.html",
-            {"request": request, "error": "You are not authorized to access the admin dashboard."},
+            {"request": request, "error": "You are not authorized to access the admin dashboard.", "recaptcha_site_key": site_key, "recaptcha_version": version, "recaptcha_action": action},
             status_code=403,
         )
     redirect = RedirectResponse(url="/admin", status_code=303)

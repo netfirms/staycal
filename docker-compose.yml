@@ -28,13 +28,14 @@ services:
       # FastAPI app reads these from the environment
       DATABASE_URL: postgresql+psycopg://staycal:staycal@db:5432/staycal
       SECRET_KEY: dev-secret-key-change-me
+      DEBUG: "true"
       # Optional: enable Cloudinary by setting your URL here or via `docker compose --env-file`
       # CLOUDINARY_URL: "cloudinary://<api_key>:<api_secret>@<cloud_name>"
     ports:
       - "8000:8000"
     volumes:
       - ./:/app
-    command: /bin/sh -c "alembic upgrade head || true; uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
+    command: /bin/sh -c "alembic upgrade head || true; uvicorn app.main:app --host 0.0.0.0 --port 8000 --log-level debug --reload"
 
 volumes:
   pgdata:

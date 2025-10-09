@@ -44,12 +44,22 @@ def _ensure_cloudinary_configured() -> bool:
         return False
 
 
+
 def save_image(file_bytes: bytes, original_filename: str | None = None, folder: str = "staycal") -> Optional[str]:
     """Save image to Cloudinary if configured; otherwise fallback to local uploads.
 
-    Returns the public URL (secure) of the stored image, or None if input is not an image.
+    Returns the public URL (secure) of the stored image, or None if input is not an image or exceeds size limit.
+    Enforces a maximum per-image upload size of 5 MB.
     """
     if not file_bytes:
+        return None
+
+    # Enforce size limit (from env via settings, default 5 MiB)
+    try:
+        limit_bytes = int(getattr(settings, "UPLOAD_IMAGE_MAX_BYTES", 5 * 1024 * 1024))
+    except Exception:
+        limit_bytes = 5 * 1024 * 1024
+    if len(file_bytes) > limit_bytes:
         return None
 
     # Basic validation using lightweight header sniffing (Python 3.13-safe)
