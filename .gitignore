@@ -31,7 +31,8 @@ venv/
 env/
 ENV/
 
-# Environment files (keep example)
+# Environment variables
+# Ignore environment files, but keep the example for guidance
 .env
 .env.*
 !.env.example
@@ -73,6 +74,7 @@ uvicorn.log
 # Databases
 *.sqlite3
 *.sqlite
+*.db-journal
 *.db
 
 # Jupyter Notebook

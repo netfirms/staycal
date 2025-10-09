@@ -79,5 +79,6 @@ erDiagram
     end_date date
     price decimal
     status enum
+    created_by int FK
   }
 ```
