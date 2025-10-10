@@ -54,5 +54,21 @@
         </div>
     </form>
   </div>
+
+  {% if user.role == 'owner' %}
+  <div class="bg-white p-4 rounded-xl shadow-sm border md:col-span-2">
+    <h2 class="font-medium mb-2">Invite Staff</h2>
+    <p class="text-sm text-gray-600 mb-3">Invite a team member to manage your active property. They will be able to manage rooms and bookings.</p>
+    <form method="post" action="/app/settings/invite" class="flex items-center gap-3">
+        <div>
+            <label for="email" class="block text-sm text-gray-600">Email Address</label>
+            <input type="email" id="email" name="email" required class="border rounded p-2 w-64">
+        </div>
+        <div class="mt-5">
+            <button class="px-4 py-2 bg-blue-600 text-white rounded">Send Invitation</button>
+        </div>
+    </form>
+  </div>
+  {% endif %}
 </div>
 {% endblock %}

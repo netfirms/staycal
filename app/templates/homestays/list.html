@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{% block title %}My Properties{% endblock %}
+
+{% block content %}
+<div class="flex items-center justify-between mb-4">
+    <h1 class="text-2xl font-semibold">My Properties</h1>
+    <a href="/app/homestays/new" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">Add New Property</a>
+</div>
+
+<div class="bg-white p-4 rounded-xl shadow-sm border">
+    <ul class="divide-y">
+        {% for hs in homestays %}
+        <li class="py-3 flex items-center justify-between">
+            <div>
+                <div class="font-medium">{{ hs.name }}</div>
+                <div class="text-sm text-gray-600">{{ hs.address }}</div>
+            </div>
+            <div class="flex items-center gap-2">
+                {% if user.homestay_id == hs.id %}
+                    <span class="px-3 py-1 text-xs font-medium text-green-800 bg-green-100 rounded-full">Active</span>
+                {% else %}
+                    <form action="/app/homestays/{{ hs.id }}/set_active" method="post">
+                        <button class="px-3 py-1 text-xs font-medium text-gray-700 bg-gray-100 rounded-full hover:bg-gray-200">Set Active</button>
+                    </form>
+                {% endif %}
+                <a href="/app/homestays/{{ hs.id }}/edit" class="text-sm text-blue-600 hover:underline">Edit</a>
+            </div>
+        </li>
+        {% else %}
+        <li class="py-3 text-center text-gray-600">
+            You haven't added any properties yet. <a href="/app/homestays/new" class="text-blue-600 underline">Add one now</a> to get started.
+        </li>
+        {% endfor %}
+    </ul>
+</div>
+
+<script>
+  // Track the create_homestay event in Firebase Analytics
+  document.addEventListener('DOMContentLoaded', function() {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.has('created') && window.analytics) {
+      window.analytics.logEvent('create_homestay');
+    }
+  });
+</script>
+{% endblock %}

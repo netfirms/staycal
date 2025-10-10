@@ -2,6 +2,7 @@ import secrets
 import json
 from urllib import request as urlrequest
 from urllib.parse import urlencode
+from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends, Form, Request, Response, BackgroundTasks
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy.orm import Session
@@ -10,7 +11,7 @@ from ..models import User, Plan, Subscription
 from ..security import hash_password, verify_password, set_session, clear_session
 from ..config import settings
 from ..limiter import limiter
-from ..services.mail import send_verification_email
+from ..services.mail import send_verification_email, send_password_reset_email, send_invitation_email
 from ..templating import templates
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -68,7 +69,7 @@ async def login(request: Request, email: str = Form(...), password: str = Form(.
         )
 
     user = db.query(User).filter(User.email == email).first()
-    if not user or not verify_password(password, user.hashed_password):
+    if not user or not user.hashed_password or not verify_password(password, user.hashed_password):
         return templates.TemplateResponse(
             "auth/login.html",
             {"request": request, "error": "Invalid email or password.", "recaptcha_site_key": settings.RECAPTCHA_SITE_KEY, "recaptcha_version": settings.RECAPTCHA_VERSION, "recaptcha_action": "login"},
@@ -145,6 +146,75 @@ async def verify_email(token: str, db: Session = Depends(get_db)):
     db.commit()
 
     redirect = RedirectResponse(url="/app?msg=Email+verified+successfully!", status_code=303)
+    set_session(redirect, user.id)
+    return redirect
+
+@router.get("/accept-invitation")
+def accept_invitation_form(request: Request, token: str, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.invitation_token == token).first()
+    if not user or user.is_verified:
+        return RedirectResponse(url="/auth/login?error=Invalid+or+expired+invitation+token.", status_code=303)
+    
+    return templates.TemplateResponse("auth/accept_invitation.html", {"request": request, "token": token})
+
+@router.post("/accept-invitation")
+def accept_invitation(request: Request, token: str = Form(...), password: str = Form(...), confirm_password: str = Form(...), db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.invitation_token == token).first()
+    if not user or user.is_verified:
+        return templates.TemplateResponse("auth/accept_invitation.html", {"request": request, "token": token, "error": "Invalid or expired invitation token."})
+
+    if password != confirm_password:
+        return templates.TemplateResponse("auth/accept_invitation.html", {"request": request, "token": token, "error": "Passwords do not match."})
+
+    user.hashed_password = hash_password(password)
+    user.is_verified = True
+    user.invitation_token = None
+    db.commit()
+
+    redirect = RedirectResponse(url="/app?msg=Invitation+accepted!+Welcome+to+the+team.", status_code=303)
+    set_session(redirect, user.id)
+    return redirect
+
+@router.get("/forgot-password", response_class=HTMLResponse)
+def forgot_password_form(request: Request):
+    return templates.TemplateResponse("auth/forgot_password.html", {"request": request})
+
+@router.post("/forgot-password")
+async def forgot_password(request: Request, background_tasks: BackgroundTasks, email: str = Form(...), db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.email == email).first()
+    if user:
+        token = secrets.token_urlsafe(32)
+        user.password_reset_token = token
+        user.password_reset_expires_at = datetime.utcnow() + timedelta(hours=1)
+        db.commit()
+        background_tasks.add_task(send_password_reset_email, user.email, token)
+    
+    return templates.TemplateResponse("auth/forgot_password.html", {"request": request, "message": "If an account with that email exists, we have sent a password reset link."})
+
+@router.get("/reset-password", response_class=HTMLResponse)
+def reset_password_form(request: Request, token: str, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.password_reset_token == token).first()
+    if not user or user.password_reset_expires_at < datetime.utcnow():
+        return RedirectResponse(url="/auth/login?error=Invalid+or+expired+password+reset+token.", status_code=303)
+    
+    return templates.TemplateResponse("auth/reset_password.html", {"request": request, "token": token})
+
+@router.post("/reset-password")
+def reset_password(request: Request, token: str = Form(...), password: str = Form(...), confirm_password: str = Form(...), db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.password_reset_token == token).first()
+    if not user or user.password_reset_expires_at < datetime.utcnow():
+        return templates.TemplateResponse("auth/reset_password.html", {"request": request, "token": token, "error": "Invalid or expired password reset token."})
+
+    if password != confirm_password:
+        return templates.TemplateResponse("auth/reset_password.html", {"request": request, "token": token, "error": "Passwords do not match."})
+
+    user.hashed_password = hash_password(password)
+    user.password_reset_token = None
+    user.password_reset_expires_at = None
+    user.is_verified = True # Also verify user if they came through this flow
+    db.commit()
+
+    redirect = RedirectResponse(url="/app?msg=Password+reset+successfully!", status_code=303)
     set_session(redirect, user.id)
     return redirect
 
