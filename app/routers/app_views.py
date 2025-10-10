@@ -1,6 +1,6 @@
 from datetime import date, timedelta
 from fastapi import APIRouter, Depends, Request
-from fastapi.responses import HTMLResponse, RedirectResponse, Response
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from sqlalchemy import func
@@ -9,7 +9,6 @@ from ..models import User, Homestay, Room, Booking, BookingStatus
 from ..security import get_current_user_id
 from ..services.auto_checkout import run_auto_checkout
 from ..templating import templates
-from ..services import reporting
 
 router = APIRouter(tags=["app"])
 
@@ -32,7 +31,14 @@ def dashboard(request: Request, db: Session = Depends(get_db)):
     rooms_count = 0
     today = date.today()
     active = None
-    analytics = {"monthly_bookings": 0, "monthly_revenue": 0.0, "month_start": date(today.year, today.month, 1)}
+    analytics = {
+        "monthly_bookings": 0, 
+        "monthly_revenue": 0.0, 
+        "month_start": date(today.year, today.month, 1),
+        "occupancy_rate": 0.0,
+        "adr": 0.0,
+        "revpar": 0.0,
+    }
 
     if user and user.homestay_id:
         active = db.query(Homestay).get(user.homestay_id)
@@ -43,8 +49,20 @@ def dashboard(request: Request, db: Session = Depends(get_db)):
         if room_ids:
             month_start = date(today.year, today.month, 1)
             days_in_month = (date(today.year, today.month + 1, 1) - month_start).days if today.month < 12 else 31
+            
+            # Monthly revenue and bookings
             analytics["monthly_bookings"] = db.query(func.count(Booking.id)).filter(Booking.room_id.in_(room_ids), Booking.start_date >= month_start, Booking.start_date < (month_start + timedelta(days=days_in_month))).scalar() or 0
-            analytics["monthly_revenue"] = db.query(func.coalesce(func.sum(Booking.price), 0)).filter(Booking.room_id.in_(room_ids), Booking.start_date >= month_start, Booking.start_date < (month_start + timedelta(days=days_in_month)), Booking.status.in_([BookingStatus.CONFIRMED.value, BookingStatus.CHECKED_IN.value, BookingStatus.CHECKED_OUT.value])).scalar() or 0
+            monthly_revenue = db.query(func.coalesce(func.sum(Booking.price), 0)).filter(Booking.room_id.in_(room_ids), Booking.start_date >= month_start, Booking.start_date < (month_start + timedelta(days=days_in_month)), Booking.status.in_([BookingStatus.CONFIRMED.value, BookingStatus.CHECKED_IN.value, BookingStatus.CHECKED_OUT.value])).scalar() or 0
+            analytics["monthly_revenue"] = float(monthly_revenue)
+
+            # Occupancy, ADR, RevPAR
+            total_room_nights_in_month = rooms_count * days_in_month
+            booked_nights_in_month = db.query(func.sum(Booking.end_date - Booking.start_date)).filter(Booking.room_id.in_(room_ids), Booking.start_date >= month_start, Booking.start_date < (month_start + timedelta(days=days_in_month)), Booking.status.in_([BookingStatus.CONFIRMED.value, BookingStatus.CHECKED_IN.value])).scalar() or 0
+            booked_nights_in_month = booked_nights_in_month.days if booked_nights_in_month else 0
+
+            analytics["occupancy_rate"] = (booked_nights_in_month / total_room_nights_in_month) * 100 if total_room_nights_in_month > 0 else 0
+            analytics["adr"] = analytics["monthly_revenue"] / booked_nights_in_month if booked_nights_in_month > 0 else 0
+            analytics["revpar"] = analytics["monthly_revenue"] / total_room_nights_in_month if total_room_nights_in_month > 0 else 0
 
             checkins_today = (
                 db.query(Booking)

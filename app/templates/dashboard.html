@@ -52,29 +52,58 @@
 </div>
 
 {# Stats cards #}
-<div class="grid grid-cols-2 md:grid-cols-5 gap-3 mb-4">
-  <div class="bg-white rounded-lg border p-3">
-    <div class="text-xs text-gray-500">Rooms</div>
-    <div class="text-2xl font-semibold">{{ rooms_count if rooms_count else 0 }}</div>
-  </div>
-  <div class="bg-white rounded-lg border p-3">
-    <div class="text-xs text-gray-500">Check-ins Today</div>
-    <div class="text-2xl font-semibold">{{ checkins_today|length }}</div>
-  </div>
-  <div class="bg-white rounded-lg border p-3">
-    <div class="text-xs text-gray-500">Check-outs Today</div>
-    <div class="text-2xl font-semibold">{{ checkouts_today|length }}</div>
-  </div>
-  <div class="bg-white rounded-lg border p-3">
-    <div class="text-xs text-gray-500">Upcoming</div>
-    <div class="text-2xl font-semibold">{{ upcoming_count }}</div>
-  </div>
-  <div class="bg-white rounded-lg border p-3 md:col-span-2 lg:col-span-1">
-    <div class="text-xs text-gray-500">This Month ({{ analytics.month_start.strftime('%b') }})</div>
-    <div class="text-lg font-semibold">{{ analytics.monthly_bookings }} bookings</div>
-    <div class="text-lg font-semibold">{{ user.currency|currency_symbol }}{{ '%.2f'|format(analytics.monthly_revenue) }}</div>
-  </div>
+<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-4">
+    <div class="bg-white rounded-lg border p-4">
+        <div class="text-sm text-gray-500">Rooms</div>
+        <div class="text-3xl font-semibold">{{ rooms_count if rooms_count else 0 }}</div>
+    </div>
+    <div class="bg-white rounded-lg border p-4">
+        <div class="text-sm text-gray-500">Check-ins Today</div>
+        <div class="text-3xl font-semibold">{{ checkins_today|length }}</div>
+    </div>
+    <div class="bg-white rounded-lg border p-4">
+        <div class="text-sm text-gray-500">Check-outs Today</div>
+        <div class="text-3xl font-semibold">{{ checkouts_today|length }}</div>
+    </div>
+    <div class="bg-white rounded-lg border p-4">
+        <div class="text-sm text-gray-500">Upcoming Bookings</div>
+        <div class="text-3xl font-semibold">{{ upcoming_count }}</div>
+    </div>
 </div>
+
+<div class="grid lg:grid-cols-3 gap-4 mb-4">
+    <div class="bg-white rounded-lg border p-4">
+        <h3 class="font-medium mb-2">This Month ({{ analytics.month_start.strftime('%B') }})</h3>
+        <div class="grid grid-cols-2 gap-4">
+            <div class="p-3 rounded border bg-gray-50">
+                <div class="text-xs text-gray-600">Bookings</div>
+                <div class="text-lg font-semibold">{{ analytics.monthly_bookings }}</div>
+            </div>
+            <div class="p-3 rounded border bg-gray-50">
+                <div class="text-xs text-gray-600">Revenue</div>
+                <div class="text-lg font-semibold">{{ user.currency|currency_symbol }}{{ '%.2f'|format(analytics.monthly_revenue) }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="lg:col-span-2 bg-white rounded-lg border p-4">
+        <h3 class="font-medium mb-2">Key Metrics (This Month)</h3>
+        <div class="grid grid-cols-3 gap-4">
+            <div class="p-3 rounded border bg-gray-50">
+                <div class="text-xs text-gray-600">Occupancy Rate</div>
+                <div class="text-lg font-semibold">{{ '%.2f'|format(analytics.occupancy_rate) }}%</div>
+            </div>
+            <div class="p-3 rounded border bg-gray-50">
+                <div class="text-xs text-gray-600">Avg. Daily Rate (ADR)</div>
+                <div class="text-lg font-semibold">{{ user.currency|currency_symbol }}{{ '%.2f'|format(analytics.adr) }}</div>
+            </div>
+            <div class="p-3 rounded border bg-gray-50">
+                <div class="text-xs text-gray-600">Revenue Per Room (RevPAR)</div>
+                <div class="text-lg font-semibold">{{ user.currency|currency_symbol }}{{ '%.2f'|format(analytics.revpar) }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+
 
 {# Today operations lists #}
 {% if checkins_today or checkouts_today %}
