@@ -1,4 +1,42 @@
 {% extends "base.html" %}
+
+{% block title %}GoStayPro | Simple Booking Calendar for Guesthouses & Homestays{% endblock %}
+
+{% block head %}
+  <meta name="description" content="The simple, visual way to manage your property. GoStayPro is a calendar-first booking system for guesthouses, B&Bs, and homestays. Avoid double bookings and save time.">
+  <meta name="keywords" content="booking calendar, homestay management, guesthouse software, property management system, booking management, small hotel software">
+
+  <!-- Open Graph / Facebook -->
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="{{ request.url }}">
+  <meta property="og:title" content="GoStayPro | Simple Booking Calendar for Guesthouses & Homestays">
+  <meta property="og:description" content="The simple, visual way to manage your property. See all your bookings at a glance, prevent mistakes, and save time every day.">
+  <meta property="og:image" content="{{ request.url.scheme }}://{{ request.url.netloc }}/static/images/social_preview.png">
+
+  <!-- Twitter -->
+  <meta property="twitter:card" content="summary_large_image">
+  <meta property="twitter:url" content="{{ request.url }}">
+  <meta property="twitter:title" content="GoStayPro | Simple Booking Calendar for Guesthouses & Homestays">
+  <meta property="twitter:description" content="The simple, visual way to manage your property. See all your bookings at a glance, prevent mistakes, and save time every day.">
+  <meta property="twitter:image" content="{{ request.url.scheme }}://{{ request.url.netloc }}/static/images/social_preview.png">
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "GoStayPro",
+    "applicationCategory": "BusinessApplication",
+    "operatingSystem": "Web",
+    "description": "A simple, visual booking calendar for small properties like guesthouses, B&Bs, and homestays.",
+    "offers": {
+      "@type": "Offer",
+      "price": "0",
+      "priceCurrency": "USD"
+    }
+  }
+  </script>
+{% endblock %}
+
 {% block content %}
 <section class="relative">
   <!-- Decorative gradient blob background -->
