@@ -15,7 +15,7 @@ class User(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False, index=True)
-    hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
+    hashed_password: Mapped[str] = mapped_column(String(255), nullable=True) # Nullable for invited users
     role: Mapped[str] = mapped_column(String(20), default=UserRole.OWNER, nullable=False)
     homestay_id: Mapped[int | None] = mapped_column(ForeignKey("homestays.id"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
@@ -25,10 +25,17 @@ class User(Base):
     is_verified: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     verification_token: Mapped[str | None] = mapped_column(String(255), unique=True, index=True)
 
+    # Invitation fields
+    invitation_token: Mapped[str | None] = mapped_column(String(255), unique=True, index=True)
+
+    # Password reset fields
+    password_reset_token: Mapped[str | None] = mapped_column(String(255), unique=True, index=True)
+    password_reset_expires_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
     # User is staff/member of a homestay via users.homestay_id -> homestays.id
     homestay: Mapped[Optional["Homestay"]] = relationship(back_populates="users", foreign_keys=[homestay_id])
 
     # Owner relationship: a user may own one or more homestays via homestays.owner_id -> users.id
-    homestays_owned: Mapped[list["Homestay"]] = relationship(back_populates="owner", foreign_keys="Homestay.owner_id", cascade="all, delete-orphan")
+    homestays_owned: Mapped[list["Homestay"]] = relationship(back_populates="owner", foreign_keys="Homestay.owner_id")
 
     subscriptions: Mapped[list["Subscription"]] = relationship(back_populates="owner", cascade="all, delete-orphan")
