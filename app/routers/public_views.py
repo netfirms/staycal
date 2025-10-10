@@ -1,25 +1,35 @@
 import calendar as cal
 from datetime import date
 from fastapi import APIRouter, Request, Depends
-from fastapi.responses import HTMLResponse
-from fastapi.templating import Jinja2Templates
+from fastapi.responses import HTMLResponse, JSONResponse
 from sqlalchemy.orm import Session
 from ..db import get_db
-from ..models import Homestay, Room, Booking, BookingStatus
+from ..models import Homestay, Room, Booking, BookingStatus, Plan
+from ..config import settings
+from ..templating import templates
 
 router = APIRouter(tags=["public"])
-templates = Jinja2Templates(directory="app/templates")
+
+@router.get("/config")
+def get_firebase_config():
+    """Exposes client-side Firebase configuration."""
+    firebase_config = {
+        "apiKey": settings.FIREBASE_API_KEY,
+        "authDomain": settings.FIREBASE_AUTH_DOMAIN,
+        "projectId": settings.FIREBASE_PROJECT_ID,
+        "storageBucket": settings.FIREBASE_STORAGE_BUCKET,
+        "messagingSenderId": settings.FIREBASE_MESSAGING_SENDER_ID,
+        "appId": settings.FIREBASE_APP_ID,
+        "measurementId": settings.FIREBASE_MEASUREMENT_ID,
+    }
+    # Filter out any keys that are not set, so they are not sent to the client.
+    client_config = {k: v for k, v in firebase_config.items() if v}
+    return JSONResponse(content=client_config)
 
 @router.get("/", response_class=HTMLResponse)
-def landing(request: Request):
-    from ..config import settings
-    pricing = {
-        "basic_monthly": getattr(settings, "PLAN_BASIC_MONTHLY", 249),
-        "basic_yearly": getattr(settings, "PLAN_BASIC_YEARLY", 2490),
-        "pro_monthly": getattr(settings, "PLAN_PRO_MONTHLY", 699),
-        "pro_yearly": getattr(settings, "PLAN_PRO_YEARLY", 6990),
-    }
-    return templates.TemplateResponse("landing.html", {"request": request, "pricing": pricing})
+def landing(request: Request, db: Session = Depends(get_db)):
+    plans = db.query(Plan).filter(Plan.is_active == True).order_by(Plan.price_monthly.asc()).all()
+    return templates.TemplateResponse("landing.html", {"request": request, "plans": plans})
 
 @router.get("/public/{homestay_id}", response_class=HTMLResponse)
 def public_property(request: Request, homestay_id: int, room_id: int | None = None, year: int | None = None, month: int | None = None, db: Session = Depends(get_db)):
@@ -66,7 +76,6 @@ def public_calendar_events(room_id: int, start: str, end: str, db: Session = Dep
         end_date = date.fromisoformat(end[:10])
     except Exception:
         # Return empty list on bad params (keep public endpoint permissive)
-        from fastapi.responses import JSONResponse
         return JSONResponse([], status_code=200)
 
     bookings = (
@@ -123,5 +132,4 @@ def public_calendar_events(room_id: int, start: str, end: str, db: Session = Dep
         except Exception:
             pass
 
-    from fastapi.responses import JSONResponse
     return JSONResponse(events)
