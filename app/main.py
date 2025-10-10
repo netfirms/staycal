@@ -3,6 +3,7 @@ import logging
 from fastapi import FastAPI
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.middleware.sessions import SessionMiddleware
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
@@ -14,6 +15,7 @@ from .routers import auth_views, app_views, calendar_htmx_views, admin_views, pu
 from .routers import rooms_views, bookings_views, homestays_views
 from .routers import settings_views
 from .security import hash_password
+from .templating import templates
 
 # --- Logging configuration ---
 _level = logging.DEBUG if getattr(settings, "DEBUG", False) else logging.INFO
@@ -45,6 +47,9 @@ app = FastAPI(
         }
     ],
 )
+
+# Add session middleware
+app.add_middleware(SessionMiddleware, secret_key=settings.SECRET_KEY)
 
 @app.on_event("startup")
 def startup_event():

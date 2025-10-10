@@ -6,8 +6,8 @@
 <div class="flex flex-wrap items-center justify-between mb-4 gap-3">
   <h1 class="text-2xl font-semibold">Property Analytics</h1>
   <div class="flex items-center gap-2">
-    <a href="/app/overview/download/pdf?start={{ period_start.isoformat() if period_start else '' }}&end={{ period_end.isoformat() if period_end else '' }}" class="px-3 py-2 border rounded bg-white text-sm hover:bg-gray-50">Download PDF</a>
-    <a href="/app/overview/download/csv?start={{ period_start.isoformat() if period_start else '' }}&end={{ period_end.isoformat() if period_end else '' }}" class="px-3 py-2 border rounded bg-white text-sm hover:bg-gray-50">Download CSV</a>
+    <a href="/app/analytics/download/pdf?start={{ period_start.isoformat() if period_start else '' }}&end={{ period_end.isoformat() if period_end else '' }}" class="px-3 py-2 border rounded bg-white text-sm hover:bg-gray-50">Download PDF</a>
+    <a href="/app/analytics/download/csv?start={{ period_start.isoformat() if period_start else '' }}&end={{ period_end.isoformat() if period_end else '' }}" class="px-3 py-2 border rounded bg-white text-sm hover:bg-gray-50">Download CSV</a>
   </div>
 </div>
 
@@ -26,32 +26,34 @@
   </form>
 </div>
 
-{% for block in hs_blocks %}
-<div class="bg-white p-4 rounded-xl shadow-sm border mb-4">
-  <h2 class="text-xl font-semibold mb-2">{{ block.homestay.name }}</h2>
-  <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-    <div class="p-3 rounded border bg-gray-50">
-      <div class="text-xs text-gray-600">Total Nights</div>
-      <div class="text-2xl font-semibold">{{ block.stats.nights }}</div>
+<div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+    <div class="bg-white p-4 rounded-xl border shadow-sm">
+        <h3 class="text-sm font-medium text-gray-500">Total Bookings</h3>
+        <p class="text-3xl font-semibold text-gray-800">{{ analytics.total_bookings }}</p>
     </div>
-    <div class="p-3 rounded border bg-gray-50">
-      <div class="text-xs text-gray-600">Total Bookings</div>
-      <div class="text-2xl font-semibold">{{ block.stats.bookings }}</div>
+    <div class="bg-white p-4 rounded-xl border shadow-sm">
+        <h3 class="text-sm font-medium text-gray-500">Total Nights Sold</h3>
+        <p class="text-3xl font-semibold text-gray-800">{{ analytics.total_nights_sold }}</p>
     </div>
-    <div class="p-3 rounded border bg-gray-50">
-      <div class="text-xs text-gray-600">Total Revenue</div>
-      <div class="text-2xl font-semibold">{{ user.currency|currency_symbol }}{{ '%.2f'|format(block.stats.profit) }}</div>
+    <div class="bg-white p-4 rounded-xl border shadow-sm">
+        <h3 class="text-sm font-medium text-gray-500">Average Stay</h3>
+        <p class="text-3xl font-semibold text-gray-800">{{ '%.1f'|format(analytics.average_length_of_stay) }} nights</p>
     </div>
-    <div class="p-3 rounded border bg-gray-50">
-      <div class="text-xs text-gray-600">Rooms</div>
-      <div class="text-2xl font-semibold">{{ block.stats.rooms_count }}</div>
+    <div class="bg-white p-4 rounded-xl border shadow-sm">
+        <h3 class="text-sm font-medium text-gray-500">Avg. Lead Time</h3>
+        <p class="text-3xl font-semibold text-gray-800">{{ analytics.average_lead_time }} days</p>
     </div>
-  </div>
 </div>
-{% endfor %}
 
 <div class="bg-white p-4 rounded-xl shadow-sm border mb-4">
-  <h2 class="text-xl font-semibold mb-2">All Bookings in Period</h2>
+    <h2 class="text-xl font-semibold mb-2">Monthly Revenue</h2>
+    <div>
+        <canvas id="monthlyRevenueChart"></canvas>
+    </div>
+</div>
+
+<div class="bg-white p-4 rounded-xl shadow-sm border mb-4">
+  <h2 class="text-xl font-semibold mb-2">Bookings in Period</h2>
   <div class="overflow-x-auto">
     <table class="w-full text-sm">
       <thead>
@@ -81,5 +83,34 @@
     </table>
   </div>
 </div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const ctx = document.getElementById('monthlyRevenueChart');
+    if (ctx) {
+      const monthlyData = {{ analytics.monthly_revenue_data|tojson }};
+      new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: monthlyData.map(row => row.month),
+          datasets: [{
+            label: 'Monthly Revenue',
+            data: monthlyData.map(row => row.revenue),
+            backgroundColor: 'rgba(13, 148, 136, 0.6)',
+            borderColor: 'rgba(13, 148, 136, 1)',
+            borderWidth: 1
+          }]
+        },
+        options: {
+          scales: {
+            y: {
+              beginAtZero: true
+            }
+          }
+        }
+      });
+    }
+  });
+</script>
 
 {% endblock %}

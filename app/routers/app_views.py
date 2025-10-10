@@ -1,9 +1,8 @@
 from datetime import date, timedelta
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
-from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
-from sqlalchemy import func
+from sqlalchemy import func, extract
 from ..db import get_db
 from ..models import User, Homestay, Room, Booking, BookingStatus
 from ..security import get_current_user_id
@@ -124,16 +123,15 @@ def analytics_page(request: Request, db: Session = Depends(get_db), start: str |
         pass
 
     # Parse optional period
-    period_start = None
-    period_end = None
+    period_start, period_end = None, None
     try:
         if start:
             period_start = date.fromisoformat(start)
         if end:
             period_end = date.fromisoformat(end)
     except ValueError:
-        # Ignore bad inputs, treat as no period
         period_start, period_end = None, None
+
     # Default to current month if no bounds provided
     if period_start is None and period_end is None:
         today_ = date.today()
@@ -143,126 +141,68 @@ def analytics_page(request: Request, db: Session = Depends(get_db), start: str |
         else:
             first_of_next = date(today_.year, today_.month + 1, 1)
         period_start, period_end = first_of_month, first_of_next
-    # Normalize if only one bound provided: if only start -> open-ended; if only end -> open-started
 
-    # Collect homestays relevant to user
-    owned = db.query(Homestay).filter(Homestay.owner_id == user.id).all()
-    active = db.query(Homestay).get(user.homestay_id) if user.homestay_id else None
+    # Collect all rooms for the user
+    all_user_homestays = db.query(Homestay).filter(Homestay.owner_id == user.id).all()
+    all_user_room_ids = [r.id for hs in all_user_homestays for r in hs.rooms]
+    rooms_map = {r.id: r for hs in all_user_homestays for r in hs.rooms}
 
-    # Build stats per homestay
-    seen_ids = set()
-    relevant = []
-    for hs in owned:
-        relevant.append(hs)
-        seen_ids.add(hs.id)
-    if active and active.id not in seen_ids:
-        relevant.append(active)
+    # Fetch bookings for the period
+    q = db.query(Booking).filter(Booking.room_id.in_(all_user_room_ids))
+    if period_start and period_end:
+        q = q.filter(Booking.start_date < period_end, Booking.end_date > period_start)
+    elif period_start:
+        q = q.filter(Booking.end_date > period_start)
+    elif period_end:
+        q = q.filter(Booking.start_date < period_end)
+    bookings_in_period = q.order_by(Booking.start_date.asc()).all()
 
-    hs_blocks: list[dict] = []
-    bookings_by_hs: dict[int, list[Booking]] = {}
+    # --- Advanced Analytics ---
+    total_nights_sold = sum((b.end_date - b.start_date).days for b in bookings_in_period)
+    total_revenue = sum(b.price for b in bookings_in_period if b.price is not None)
+    avg_lead_time = db.query(func.avg(Booking.start_date - Booking.created_at)).filter(Booking.id.in_([b.id for b in bookings_in_period])).scalar()
+    avg_lead_time = avg_lead_time.days if avg_lead_time else 0
 
+    # Monthly revenue breakdown for the last 6 months
+    monthly_revenue_data = []
     today = date.today()
+    for i in range(6):
+        month_date = today - timedelta(days=i*30)
+        month_start = date(month_date.year, month_date.month, 1)
+        if month_date.month == 12:
+            month_end = date(month_date.year + 1, 1, 1)
+        else:
+            month_end = date(month_date.year, month_date.month + 1, 1)
+        
+        revenue = db.query(func.sum(Booking.price)).filter(
+            Booking.room_id.in_(all_user_room_ids),
+            Booking.start_date >= month_start,
+            Booking.start_date < month_end,
+            Booking.status.in_([BookingStatus.CONFIRMED.value, BookingStatus.CHECKED_IN.value, BookingStatus.CHECKED_OUT.value])
+        ).scalar() or 0
+        monthly_revenue_data.append({"month": month_start.strftime("%b %Y"), "revenue": float(revenue)})
+    
+    monthly_revenue_data.reverse() # Show oldest month first
 
-    for hs in relevant:
-        rooms = db.query(Room).filter(Room.homestay_id == hs.id).order_by(Room.name.asc()).all()
-        room_ids = [r.id for r in rooms]
-        bookings: list[Booking] = []
-        checkins_today = 0
-        checkouts_today = 0
-        if room_ids:
-            q = db.query(Booking).filter(Booking.room_id.in_(room_ids))
-            # Apply period overlap filter if both bounds provided
-            if period_start and period_end:
-                q = q.filter(Booking.start_date < period_end, Booking.end_date > period_start)
-            elif period_start:
-                q = q.filter(Booking.end_date > period_start)
-            elif period_end:
-                q = q.filter(Booking.start_date < period_end)
-            bookings = q.all()
-            checkins_today = (
-                db.query(Booking)
-                .filter(
-                    Booking.room_id.in_(room_ids),
-                    Booking.start_date == today,
-                    Booking.status != BookingStatus.CANCELLED.value,
-                )
-                .count()
-            )
-            checkouts_today = (
-                db.query(Booking)
-                .filter(
-                    Booking.room_id.in_(room_ids),
-                    Booking.end_date == today,
-                    Booking.status != BookingStatus.CANCELLED.value,
-                )
-                .count()
-            )
-        bookings_by_hs[hs.id] = bookings
-
-        # Compute stats
-        nights = 0
-        for b in bookings:
-            if period_start or period_end:
-                s = b.start_date
-                e = b.end_date
-                if period_start:
-                    s = max(s, period_start)
-                if period_end:
-                    e = min(e, period_end)
-                nights += max(0, (e - s).days)
-            else:
-                nights += max(0, (b.end_date - b.start_date).days)
-        bookings_count = len(bookings)
-        profit = float(sum(float(b.price or 0) for b in bookings))
-        stats = {
-            "nights": nights,
-            "bookings": bookings_count,
-            "profit": profit,
-            "rooms_count": len(rooms),
-            "checkins_today": checkins_today,
-            "checkouts_today": checkouts_today,
-        }
-        hs_blocks.append({"homestay": hs, "rooms": rooms, "stats": stats})
-
-    # Flatten combined list of bookings for quick view (recent first)
-    all_bookings: list[Booking] = []
-    for lst in bookings_by_hs.values():
-        all_bookings.extend(lst)
-    all_bookings.sort(key=lambda b: (b.start_date, b.id), reverse=True)
-
-    # Upcoming check-ins for the active homestay (next ones by start_date)
-    upcoming_checkins = []
-    rooms_map = {}
-    if active:
-        active_rooms = db.query(Room).filter(Room.homestay_id == active.id).all()
-        rooms_map = {r.id: r for r in active_rooms}
-        active_room_ids = [r.id for r in active_rooms]
-        if active_room_ids:
-            upcoming_checkins = (
-                db.query(Booking)
-                .filter(
-                    Booking.room_id.in_(active_room_ids),
-                    Booking.start_date >= today,
-                    Booking.status != BookingStatus.CANCELLED.value,
-                )
-                .order_by(Booking.start_date.asc(), Booking.id.asc())
-                .limit(10)
-                .all()
-            )
+    advanced_analytics = {
+        "total_bookings": len(bookings_in_period),
+        "total_nights_sold": total_nights_sold,
+        "total_revenue": total_revenue,
+        "average_length_of_stay": total_nights_sold / len(bookings_in_period) if bookings_in_period else 0,
+        "average_lead_time": avg_lead_time,
+        "monthly_revenue_data": monthly_revenue_data,
+    }
 
     return templates.TemplateResponse(
         "analytics.html",
         {
             "request": request,
             "user": user,
-            "owned": owned,
-            "active": active,
-            "hs_blocks": hs_blocks,
-            "all_bookings": all_bookings,
+            "all_bookings": bookings_in_period,
             "period_start": period_start,
             "period_end": period_end,
-            "upcoming_checkins": upcoming_checkins,
             "rooms_map": rooms_map,
+            "analytics": advanced_analytics,
         },
     )
 
