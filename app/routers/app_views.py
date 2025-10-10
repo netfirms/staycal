@@ -58,8 +58,7 @@ def dashboard(request: Request, db: Session = Depends(get_db)):
 
             # Occupancy, ADR, RevPAR
             total_room_nights_in_month = rooms_count * days_in_month
-            booked_nights_result = db.query(func.sum(Booking.end_date - Booking.start_date)).filter(Booking.room_id.in_(room_ids), Booking.start_date >= month_start, Booking.start_date < (month_start + timedelta(days=days_in_month)), Booking.status.in_([BookingStatus.CONFIRMED.value, BookingStatus.CHECKED_IN.value])).scalar()
-            booked_nights_in_month = booked_nights_result.days if booked_nights_result else 0
+            booked_nights_in_month = db.query(func.sum(Booking.end_date - Booking.start_date)).filter(Booking.room_id.in_(room_ids), Booking.start_date >= month_start, Booking.start_date < (month_start + timedelta(days=days_in_month)), Booking.status.in_([BookingStatus.CONFIRMED.value, BookingStatus.CHECKED_IN.value])).scalar() or 0
 
             analytics["occupancy_rate"] = (booked_nights_in_month / total_room_nights_in_month) * 100 if total_room_nights_in_month > 0 else 0
             analytics["adr"] = analytics["monthly_revenue"] / booked_nights_in_month if booked_nights_in_month > 0 else 0
