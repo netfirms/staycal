@@ -62,6 +62,17 @@
     </div>
   </div>
 
+  <!-- Free Usage Promotion -->
+  <div class="max-w-6xl mx-auto py-8">
+    <div class="bg-blue-600 text-white rounded-xl p-8 text-center">
+      <h2 class="text-3xl font-extrabold">Get Started for Free</h2>
+      <p class="mt-2 text-lg text-blue-100">Manage your property with our core features, completely free. No credit card required.</p>
+      <div class="mt-4">
+        <a href="/auth/register" class="px-6 py-3 bg-white text-blue-600 rounded-lg font-semibold hover:bg-gray-100 shadow-md">Sign Up Now</a>
+      </div>
+    </div>
+  </div>
+
   <!-- Features -->
   <div class="max-w-6xl mx-auto py-8">
     <div class="grid md:grid-cols-3 gap-6">
@@ -120,50 +131,6 @@
         <p class="text-gray-600 text-sm">Start with one property and add more as your business grows. Our simple pricing is designed for small businesses.</p>
       </div>
     </div>
-  </div>
-
-  <!-- Pricing -->
-  <div class="max-w-6xl mx-auto py-12">
-    <h2 class="text-3xl font-extrabold text-center mb-2">Simple, Affordable Pricing</h2>
-    <p class="text-center text-gray-600 mb-8">Start free. Upgrade anytime.</p>
-
-    <div class="grid md:grid-cols-3 gap-6">
-      {% for plan in plans %}
-      <div class="bg-white border rounded-2xl shadow-sm p-6 flex flex-col {% if plan.name == 'basic' %}border-2 border-blue-600{% endif %}">
-        {% if plan.name == 'basic' %}
-        <span class="absolute -top-3 right-4 text-xs px-2 py-0.5 rounded-full bg-blue-600 text-white">Popular</span>
-        {% endif %}
-        <div class="text-sm font-semibold text-blue-700 capitalize">{{ plan.name }}</div>
-        <div class="mt-2 text-4xl font-extrabold">{{ plan.price_monthly|int }}<span class="text-base font-medium text-gray-500">/mo</span></div>
-        <div class="text-xs text-gray-500">or {{ plan.price_yearly|int }}/yr</div>
-        <div class="text-sm text-gray-500">{{ plan.user_limit }} user · up to {{ plan.room_limit }} rooms</div>
-        <ul class="mt-4 text-sm text-gray-700 space-y-2">
-          <li>• Visual booking calendar</li>
-          <li>• Double-booking prevention</li>
-          <li>• Daily check-in/out list</li>
-          <li>• Public availability page</li>
-          {% if plan.name == 'basic' or plan.name == 'pro' %}
-          <li>• Simple business reports</li>
-          <li>• CSV data export</li>
-          <li>• Email support</li>
-          {% endif %}
-          {% if plan.name == 'pro' %}
-          <li>• Sync with other calendars</li>
-          <li>• Advanced business analytics</li>
-          <li>• Priority support</li>
-          {% endif %}
-        </ul>
-        <div class="mt-6">
-          <a href="/auth/register" class="w-full inline-flex justify-center px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Get Started with {{ plan.name|title }}</a>
-        </div>
-      </div>
-      {% endfor %}
-    </div>
-  </div>
-
-  <!-- Footer note -->
-  <div class="max-w-6xl mx-auto text-center text-sm text-gray-500 pb-10">
-    <p>GoStayPro is a demo application. It is not a real product.</p>
   </div>
 </section>
 {% endblock %}
