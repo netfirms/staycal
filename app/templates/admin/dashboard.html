@@ -10,6 +10,23 @@
   </div>
 </div>
 
+<div class="bg-white p-4 rounded-xl shadow-sm border mb-4">
+    <h2 class="font-medium mb-2">Currency Settings</h2>
+    <form method="post" action="/admin/settings/currency" class="flex items-center gap-3">
+        <div>
+            <label for="currency" class="block text-sm text-gray-600">Display Currency</label>
+            <select id="currency" name="currency" class="border rounded p-2">
+                {% for code in available_currencies %}
+                    <option value="{{ code }}" {% if user.currency == code %}selected{% endif %}>{{ code }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="mt-5">
+            <button class="px-4 py-2 bg-blue-600 text-white rounded">Save</button>
+        </div>
+    </form>
+</div>
+
 {% if analytics %}
 <div class="grid md:grid-cols-3 lg:grid-cols-6 gap-3 mb-4">
   <div class="bg-white p-3 rounded-xl border shadow-sm">
@@ -40,7 +57,7 @@
 
 <div class="grid lg:grid-cols-3 gap-4 mb-6">
   <div class="bg-white p-4 rounded-xl shadow-sm border">
-    <h2 class="font-medium mb-1">This Month</h2>
+    <h2 class="font-medium mb-1">This Month (All Users)</h2>
     <div class="text-sm text-gray-500 mb-3">From {{ analytics.month_start }} to now</div>
     <div class="grid grid-cols-2 gap-3">
       <div class="p-3 rounded border bg-gray-50">
@@ -48,7 +65,7 @@
         <div class="text-lg font-semibold">{{ analytics.monthly_bookings }}</div>
       </div>
       <div class="p-3 rounded border bg-gray-50">
-        <div class="text-xs text-gray-600">Revenue (THB)</div>
+        <div class="text-xs text-gray-600">Revenue</div>
         <div class="text-lg font-semibold">{{ user.currency|currency_symbol }}{{ '%.2f'|format(analytics.monthly_revenue) }}</div>
       </div>
     </div>
@@ -77,6 +94,35 @@
       {% endfor %}
     </ul>
   </div>
+</div>
+
+<div class="bg-white p-4 rounded-xl shadow-sm border mb-6">
+    <h2 class="font-medium mb-2">User Analytics</h2>
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead>
+                <tr class="text-left border-b bg-gray-50">
+                    <th class="py-2 px-2">User</th>
+                    <th class="py-2 px-2">Properties</th>
+                    <th class="py-2 px-2">Rooms</th>
+                    <th class="py-2 px-2">Total Revenue</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y">
+                {% for item in analytics.user_analytics %}
+                <tr>
+                    <td class="py-2 px-2">
+                        <div class="font-medium">{{ item.user.email }}</div>
+                        <div class="text-xs text-gray-500">id: {{ item.user.id }}</div>
+                    </td>
+                    <td class="py-2 px-2">{{ item.homestay_count }}</td>
+                    <td class="py-2 px-2">{{ item.room_count }}</td>
+                    <td class="py-2 px-2">{{ item.user.currency|currency_symbol }}{{ '%.2f'|format(item.total_revenue) }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 </div>
 
 <div class="grid md:grid-cols-2 gap-4 mb-6">
@@ -112,7 +158,6 @@
 </div>
 {% endif %}
 
-{# Plans & Subscriptions quick management #}
 <div class="bg-white p-4 rounded-xl shadow-sm border mb-6">
   <div class="flex items-center justify-between mb-2">
     <h2 class="font-medium">Plans & Subscriptions</h2>
@@ -178,53 +223,6 @@
         {% endfor %}
       </tbody>
     </table>
-  </div>
-</div>
-
-<div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-  <div class="bg-white p-4 rounded-xl shadow-sm border">
-    <h2 class="font-medium mb-2">Properties</h2>
-    <div class="overflow-auto max-h-80">
-      <table class="w-full text-sm">
-        <thead>
-          <tr class="text-left border-b bg-gray-50">
-            <th class="py-2 px-2">Name</th>
-            <th class="py-2 px-2">Owner ID</th>
-          </tr>
-        </thead>
-        <tbody class="divide-y">
-          {% for h in homestays %}
-          <tr>
-            <td class="py-2 px-2">{{ h.name }}</td>
-            <td class="py-2 px-2">{{ h.owner_id }}</td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-  </div>
-  <div class="bg-white p-4 rounded-xl shadow-sm border">
-    <h2 class="font-medium mb-2">Subscriptions</h2>
-    <div class="overflow-auto max-h-80">
-      <table class="w-full text-sm">
-        <thead>
-          <tr class="text-left border-b bg-gray-50">
-            <th class="py-2 px-2">Owner</th>
-            <th class="py-2 px-2">Plan</th>
-            <th class="py-2 px-2">Status</th>
-          </tr>
-        </thead>
-        <tbody class="divide-y">
-          {% for s in subs %}
-          <tr>
-            <td class="py-2 px-2">{{ s.owner_id }}</td>
-            <td class="py-2 px-2">{{ s.plan.name if s.plan else '-' }}</td>
-            <td class="py-2 px-2">{{ s.status.value }}</td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
   </div>
 </div>
 {% endblock %}

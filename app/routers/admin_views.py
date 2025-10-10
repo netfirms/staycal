@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends, Request, Form, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy.orm import Session
-from sqlalchemy import func
-from datetime import datetime, date
+from sqlalchemy import func, and_
+from datetime import datetime, date, timedelta
 import os
 from ..db import get_db
 from ..models import User, Homestay, Subscription, SubscriptionStatus, Room, Booking, BookingStatus, UserRole, Plan
@@ -10,6 +10,7 @@ from ..security import get_current_user_id, hash_password
 from ..config import settings
 from ..services.media import _ensure_cloudinary_configured
 from ..templating import templates
+from ..services.currency import CURRENCY_SYMBOLS
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -110,102 +111,75 @@ def admin_dashboard(request: Request, db: Session = Depends(get_db), admin_user:
     homestays = db.query(Homestay).all()
     subs = db.query(Subscription).all()
 
-    # Analytics
+    # --- Analytics Calculations ---
     today = date.today()
     month_start = date(today.year, today.month, 1)
-    # compute next month start
-    next_month = today.month + 1
-    next_year = today.year + 1 if next_month == 13 else today.year
-    next_month = 1 if next_month == 13 else next_month
-    next_month_start = date(next_year, next_month, 1)
+    days_in_month = (date(today.year, today.month + 1, 1) - month_start).days if today.month < 12 else 31
 
-    users_count = db.query(func.count(User.id)).scalar() or 0
-    homestays_count = db.query(func.count(Homestay.id)).scalar() or 0
+    users_count = len(users)
+    homestays_count = len(homestays)
     rooms_count = db.query(func.count(Room.id)).scalar() or 0
     bookings_count = db.query(func.count(Booking.id)).scalar() or 0
 
-    # Today check-ins and check-outs (simple definition)
-    checkins_today = (
-        db.query(func.count(Booking.id))
-        .filter(Booking.start_date == today, Booking.status.in_([BookingStatus.CONFIRMED.value, BookingStatus.CHECKED_IN.value]))
-        .scalar()
-        or 0
-    )
-    checkouts_today = (
-        db.query(func.count(Booking.id))
-        .filter(Booking.end_date == today, Booking.status.in_([BookingStatus.CONFIRMED.value, BookingStatus.CHECKED_IN.value, BookingStatus.CHECKED_OUT.value]))
-        .scalar()
-        or 0
-    )
+    # Today check-ins and check-outs
+    checkins_today = db.query(func.count(Booking.id)).filter(Booking.start_date == today, Booking.status.in_([BookingStatus.CONFIRMED.value, BookingStatus.CHECKED_IN.value])).scalar() or 0
+    checkouts_today = db.query(func.count(Booking.id)).filter(Booking.end_date == today, Booking.status.in_([BookingStatus.CONFIRMED.value, BookingStatus.CHECKED_IN.value, BookingStatus.CHECKED_OUT.value])).scalar() or 0
 
-    # Current month metrics
-    monthly_bookings = (
-        db.query(func.count(Booking.id))
-        .filter(Booking.start_date >= month_start, Booking.start_date < next_month_start)
-        .scalar()
-        or 0
-    )
-    monthly_revenue = (
-        db.query(func.coalesce(func.sum(Booking.price), 0))
-        .filter(
-            Booking.start_date >= month_start,
-            Booking.start_date < next_month_start,
-            Booking.status.in_([BookingStatus.CONFIRMED.value, BookingStatus.CHECKED_IN.value, BookingStatus.CHECKED_OUT.value]),
-        )
-        .scalar()
-        or 0
-    )
+    # Monthly metrics
+    monthly_bookings = db.query(func.count(Booking.id)).filter(Booking.start_date >= month_start, Booking.start_date < (month_start + timedelta(days=days_in_month))).scalar() or 0
+    monthly_revenue = db.query(func.coalesce(func.sum(Booking.price), 0)).filter(Booking.start_date >= month_start, Booking.start_date < (month_start + timedelta(days=days_in_month)), Booking.status.in_([BookingStatus.CONFIRMED.value, BookingStatus.CHECKED_IN.value, BookingStatus.CHECKED_OUT.value])).scalar() or 0
+
+    # Occupancy, ADR, RevPAR for the current month
+    total_room_nights_in_month = rooms_count * days_in_month
+    booked_nights_in_month = db.query(func.sum(Booking.end_date - Booking.start_date)).filter(Booking.start_date >= month_start, Booking.start_date < (month_start + timedelta(days=days_in_month)), Booking.status.in_([BookingStatus.CONFIRMED.value, BookingStatus.CHECKED_IN.value])).scalar() or 0
+    booked_nights_in_month = booked_nights_in_month.days if booked_nights_in_month else 0
+
+    occupancy_rate = (booked_nights_in_month / total_room_nights_in_month) * 100 if total_room_nights_in_month > 0 else 0
+    adr = monthly_revenue / booked_nights_in_month if booked_nights_in_month > 0 else 0
+    revpar = monthly_revenue / total_room_nights_in_month if total_room_nights_in_month > 0 else 0
 
     # Booking status distribution
-    status_counts = {}
-    for st in BookingStatus:
-        cnt = db.query(func.count(Booking.id)).filter(Booking.status == st.value).scalar() or 0
-        status_counts[st.value] = cnt
+    status_counts = {st.value: db.query(func.count(Booking.id)).filter(Booking.status == st.value).scalar() or 0 for st in BookingStatus}
 
-    # Plan distribution (by current subscriptions)
+    # Plan distribution
     plans = db.query(Plan).all()
-    plan_counts = {p.name: 0 for p in plans}
-    for sub in subs:
-        if sub.plan.name in plan_counts:
-            plan_counts[sub.plan.name] += 1
+    plan_counts = {p.name: db.query(func.count(Subscription.id)).filter(Subscription.plan_id == p.id).scalar() or 0 for p in plans}
 
     recent_users = db.query(User).order_by(User.created_at.desc()).limit(5).all()
     recent_bookings = db.query(Booking).order_by(Booking.start_date.desc()).limit(5).all()
 
+    # User-specific analytics
+    user_analytics = []
+    for user in users:
+        user_homestay_ids = [h.id for h in user.homestays_owned]
+        user_room_ids = [r[0] for r in db.query(Room.id).filter(Room.homestay_id.in_(user_homestay_ids)).all()]
+        user_total_revenue = db.query(func.coalesce(func.sum(Booking.price), 0)).filter(Booking.room_id.in_(user_room_ids)).scalar() or 0
+        user_analytics.append({"user": user, "total_revenue": float(user_total_revenue), "homestay_count": len(user_homestay_ids), "room_count": len(user_room_ids)})
+
     analytics = {
-        "users_count": users_count,
-        "homestays_count": homestays_count,
-        "rooms_count": rooms_count,
-        "bookings_count": bookings_count,
-        "checkins_today": checkins_today,
-        "checkouts_today": checkouts_today,
-        "monthly_bookings": monthly_bookings,
-        "monthly_revenue": float(monthly_revenue) if monthly_revenue is not None else 0.0,
-        "status_counts": status_counts,
-        "plan_counts": plan_counts,
-        "recent_users": recent_users,
-        "recent_bookings": recent_bookings,
-        "today": today,
-        "month_start": month_start,
+        "users_count": users_count, "homestays_count": homestays_count, "rooms_count": rooms_count, "bookings_count": bookings_count,
+        "checkins_today": checkins_today, "checkouts_today": checkouts_today, "monthly_bookings": monthly_bookings,
+        "monthly_revenue": float(monthly_revenue), "status_counts": status_counts, "plan_counts": plan_counts,
+        "recent_users": recent_users, "recent_bookings": recent_bookings, "today": today, "month_start": month_start,
+        "user_analytics": user_analytics, "occupancy_rate": occupancy_rate, "adr": adr, "revpar": revpar,
     }
 
-    # Build a quick map of subscriptions by owner for inline plan management
     subs_map = {s.owner_id: s for s in subs}
 
     return templates.TemplateResponse(
         "admin/dashboard.html",
         {
-            "request": request,
-            "user": admin_user, # Pass the admin_user object as 'user'
-            "users": users,
-            "homestays": homestays,
-            "subs": subs,
-            "subs_map": subs_map,
-            "plans": plans,
-            "SubscriptionStatus": SubscriptionStatus,
-            "analytics": analytics,
+            "request": request, "user": admin_user, "users": users, "homestays": homestays, "subs": subs, "subs_map": subs_map,
+            "plans": plans, "SubscriptionStatus": SubscriptionStatus, "analytics": analytics, "available_currencies": CURRENCY_SYMBOLS.keys(),
         },
     )
+
+@router.post("/settings/currency")
+def admin_save_currency(request: Request, db: Session = Depends(get_db), admin_user: User = Depends(require_admin), currency: str = Form(...)):
+    if currency in CURRENCY_SYMBOLS:
+        admin_user.currency = currency
+        db.commit()
+    return RedirectResponse(url="/admin", status_code=303)
 
 @router.get("/users", response_class=HTMLResponse)
 def admin_users(request: Request, db: Session = Depends(get_db), admin_user: User = Depends(require_admin)):
@@ -224,12 +198,7 @@ def admin_user_new(request: Request, db: Session = Depends(get_db), admin_user: 
         roles_list = [UserRole.ADMIN, UserRole.OWNER, UserRole.STAFF]
         return templates.TemplateResponse("admin/user_form.html", {"request": request, "roles": roles_list, "user": None, "error": "User with this email already exists."})
     
-    new_user = User(
-        email=email,
-        hashed_password=hash_password(password),
-        role=role,
-        is_verified=is_verified
-    )
+    new_user = User(email=email, hashed_password=hash_password(password), role=role, is_verified=is_verified)
     db.add(new_user)
     db.commit()
     return RedirectResponse(url="/admin/users", status_code=303)
@@ -274,34 +243,15 @@ def admin_plans(request: Request, db: Session = Depends(get_db), admin_user: Use
     subs = db.query(Subscription).all()
     subs_map = {s.owner_id: s for s in subs}
     plans = db.query(Plan).order_by(Plan.id.asc()).all()
-    return templates.TemplateResponse(
-        "admin/plans.html",
-        {
-            "request": request,
-            "users": users,
-            "subs_map": subs_map,
-            "plans": plans,
-            "SubscriptionStatus": SubscriptionStatus,
-        },
-    )
+    return templates.TemplateResponse("admin/plans.html", {"request": request, "users": users, "subs_map": subs_map, "plans": plans, "SubscriptionStatus": SubscriptionStatus})
 
 
 @router.post("/plans/save")
-def admin_plans_save(
-    request: Request,
-    db: Session = Depends(get_db),
-    owner_id: int = Form(...),
-    plan_id: int = Form(...),
-    status: str = Form(...),
-    expires_at: str | None = Form(None),
-    return_to: str | None = Form(None),
-    admin_user: User = Depends(require_admin),
-):
+def admin_plans_save(request: Request, db: Session = Depends(get_db), owner_id: int = Form(...), plan_id: int = Form(...), status: str = Form(...), expires_at: str | None = Form(None), return_to: str | None = Form(None), admin_user: User = Depends(require_admin)):
     target = db.query(User).get(owner_id)
     if not target:
         return HTMLResponse("<h2>User not found</h2>", status_code=404)
 
-    # Get or create subscription for this owner
     sub = db.query(Subscription).filter(Subscription.owner_id == owner_id).first()
     if not sub:
         sub = Subscription(owner_id=owner_id)
@@ -313,11 +263,9 @@ def admin_plans_save(
     except Exception:
         sub.status = SubscriptionStatus.ACTIVE
 
-    # Parse optional expires_at (date or datetime)
     dt = None
     if expires_at:
         try:
-            # try date-only first
             if len(expires_at) == 10:
                 dt = datetime.fromisoformat(expires_at + "T00:00:00")
             else:
@@ -327,10 +275,8 @@ def admin_plans_save(
     sub.expires_at = dt
 
     db.commit()
-    # Redirect back to the requested page (dashboard or plans)
     dest = (return_to or "").strip() if return_to else None
     if not dest:
-        # fallback to Referer if provided
         dest = request.headers.get("referer")
     if not dest:
         dest = "/admin/plans"
@@ -361,10 +307,10 @@ def admin_plan_edit_form(request: Request, plan_id: int, db: Session = Depends(g
 
 @router.post("/plans/save/{plan_id}", response_class=HTMLResponse)
 def admin_plan_save(request: Request, plan_id: int, db: Session = Depends(get_db), admin_user: User = Depends(require_admin), name: str = Form(...), price_monthly: float = Form(...), price_yearly: float = Form(...), room_limit: int = Form(...), user_limit: int = Form(...), is_active: bool = Form(False)):
-    if plan_id == 0: # Create new plan
+    if plan_id == 0:
         plan = Plan()
         db.add(plan)
-    else: # Edit existing plan
+    else:
         plan = db.query(Plan).get(plan_id)
         if not plan:
             raise HTTPException(status_code=404, detail="Plan not found")
@@ -398,16 +344,12 @@ def admin_cloudinary(request: Request, db: Session = Depends(get_db), admin_user
         ok = _ensure_cloudinary_configured()
     except Exception:
         ok = False
-    return templates.TemplateResponse(
-        "admin/cloudinary.html",
-        {"request": request, "current_url": current_url, "configured": ok, "message": None, "error": None},
-    )
+    return templates.TemplateResponse("admin/cloudinary.html", {"request": request, "current_url": current_url, "configured": ok, "message": None, "error": None})
 
 
 @router.post("/cloudinary")
 def admin_cloudinary_save(request: Request, db: Session = Depends(get_db), cloudinary_url: str = Form(""), admin_user: User = Depends(require_admin)):
     url = (cloudinary_url or "").strip()
-    # update runtime settings and environment
     os.environ["CLOUDINARY_URL"] = url
     try:
         setattr(settings, "CLOUDINARY_URL", url)
@@ -426,7 +368,4 @@ def admin_cloudinary_save(request: Request, db: Session = Depends(get_db), cloud
         ok = False
         err = "Failed to configure Cloudinary. Please verify the URL and try again."
 
-    return templates.TemplateResponse(
-        "admin/cloudinary.html",
-        {"request": request, "current_url": url, "configured": ok, "message": msg, "error": err},
-    )
+    return templates.TemplateResponse("admin/cloudinary.html", {"request": request, "current_url": url, "configured": ok, "message": msg, "error": err})

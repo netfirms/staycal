@@ -1,15 +1,16 @@
-from datetime import date
+from datetime import date, timedelta
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from ..db import get_db
 from ..models import User, Homestay, Room, Booking, BookingStatus
 from ..security import get_current_user_id
 from ..services.auto_checkout import run_auto_checkout
+from ..templating import templates
 
 router = APIRouter(tags=["app"])
-templates = Jinja2Templates(directory="app/templates")
 
 @router.get("/app", response_class=HTMLResponse)
 def dashboard(request: Request, db: Session = Depends(get_db)):
@@ -21,7 +22,7 @@ def dashboard(request: Request, db: Session = Depends(get_db)):
     try:
         run_auto_checkout(db)
     except Exception:
-        db.rollback()
+        pass
     rooms = []
     rooms_map = {}
     checkins_today = []
@@ -30,6 +31,8 @@ def dashboard(request: Request, db: Session = Depends(get_db)):
     rooms_count = 0
     today = date.today()
     active = None
+    analytics = {"monthly_bookings": 0, "monthly_revenue": 0.0, "month_start": date(today.year, today.month, 1)}
+
     if user and user.homestay_id:
         active = db.query(Homestay).get(user.homestay_id)
         rooms = db.query(Room).filter(Room.homestay_id == user.homestay_id).all()
@@ -37,13 +40,18 @@ def dashboard(request: Request, db: Session = Depends(get_db)):
         rooms_map = {r.id: r for r in rooms}
         room_ids = [r.id for r in rooms]
         if room_ids:
+            month_start = date(today.year, today.month, 1)
+            days_in_month = (date(today.year, today.month + 1, 1) - month_start).days if today.month < 12 else 31
+            analytics["monthly_bookings"] = db.query(func.count(Booking.id)).filter(Booking.room_id.in_(room_ids), Booking.start_date >= month_start, Booking.start_date < (month_start + timedelta(days=days_in_month))).scalar() or 0
+            analytics["monthly_revenue"] = db.query(func.coalesce(func.sum(Booking.price), 0)).filter(Booking.room_id.in_(room_ids), Booking.start_date >= month_start, Booking.start_date < (month_start + timedelta(days=days_in_month)), Booking.status.in_([BookingStatus.CONFIRMED.value, BookingStatus.CHECKED_IN.value, BookingStatus.CHECKED_OUT.value])).scalar() or 0
+
             checkins_today = (
                 db.query(Booking)
                 .filter(
                     Booking.room_id.in_(room_ids),
                     Booking.start_date == today,
-                    Booking.status != BookingStatus.CANCELLED,
-                    )
+                    Booking.status != BookingStatus.CANCELLED.value,
+                )
                 .all()
             )
             checkouts_today = (
@@ -51,8 +59,8 @@ def dashboard(request: Request, db: Session = Depends(get_db)):
                 .filter(
                     Booking.room_id.in_(room_ids),
                     Booking.end_date == today,
-                    Booking.status != BookingStatus.CANCELLED,
-                    )
+                    Booking.status != BookingStatus.CANCELLED.value,
+                )
                 .all()
             )
             upcoming_count = (
@@ -60,8 +68,8 @@ def dashboard(request: Request, db: Session = Depends(get_db)):
                 .filter(
                     Booking.room_id.in_(room_ids),
                     Booking.start_date >= today,
-                    Booking.status != BookingStatus.CANCELLED,
-                    )
+                    Booking.status != BookingStatus.CANCELLED.value,
+                )
                 .count()
             )
     return templates.TemplateResponse(
@@ -77,6 +85,7 @@ def dashboard(request: Request, db: Session = Depends(get_db)):
             "checkins_today": checkins_today,
             "checkouts_today": checkouts_today,
             "upcoming_count": upcoming_count,
+            "analytics": analytics,
         },
     )
 
@@ -92,8 +101,8 @@ def overview(request: Request, db: Session = Depends(get_db), start: str | None 
     # Auto-checkout in case any past stays need status update
     try:
         run_auto_checkout(db)
-    except Exception:  # If auto-checkout fails, rollback to not break the session
-        db.rollback()
+    except Exception:
+        pass
 
     # Parse optional period
     period_start = None
@@ -156,7 +165,7 @@ def overview(request: Request, db: Session = Depends(get_db), start: str | None 
                 .filter(
                     Booking.room_id.in_(room_ids),
                     Booking.start_date == today,
-                    Booking.status != BookingStatus.CANCELLED,
+                    Booking.status != BookingStatus.CANCELLED.value,
                 )
                 .count()
             )
@@ -165,7 +174,7 @@ def overview(request: Request, db: Session = Depends(get_db), start: str | None 
                 .filter(
                     Booking.room_id.in_(room_ids),
                     Booking.end_date == today,
-                    Booking.status != BookingStatus.CANCELLED,
+                    Booking.status != BookingStatus.CANCELLED.value,
                 )
                 .count()
             )
@@ -215,7 +224,7 @@ def overview(request: Request, db: Session = Depends(get_db), start: str | None 
                 .filter(
                     Booking.room_id.in_(active_room_ids),
                     Booking.start_date >= today,
-                    Booking.status != BookingStatus.CANCELLED,
+                    Booking.status != BookingStatus.CANCELLED.value,
                 )
                 .order_by(Booking.start_date.asc(), Booking.id.asc())
                 .limit(10)

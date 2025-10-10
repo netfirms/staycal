@@ -52,7 +52,7 @@
 </div>
 
 {# Stats cards #}
-<div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+<div class="grid grid-cols-2 md:grid-cols-5 gap-3 mb-4">
   <div class="bg-white rounded-lg border p-3">
     <div class="text-xs text-gray-500">Rooms</div>
     <div class="text-2xl font-semibold">{{ rooms_count if rooms_count else 0 }}</div>
@@ -68,6 +68,11 @@
   <div class="bg-white rounded-lg border p-3">
     <div class="text-xs text-gray-500">Upcoming</div>
     <div class="text-2xl font-semibold">{{ upcoming_count }}</div>
+  </div>
+  <div class="bg-white rounded-lg border p-3 md:col-span-2 lg:col-span-1">
+    <div class="text-xs text-gray-500">This Month ({{ analytics.month_start.strftime('%b') }})</div>
+    <div class="text-lg font-semibold">{{ analytics.monthly_bookings }} bookings</div>
+    <div class="text-lg font-semibold">{{ user.currency|currency_symbol }}{{ '%.2f'|format(analytics.monthly_revenue) }}</div>
   </div>
 </div>
 
