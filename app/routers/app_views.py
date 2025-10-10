@@ -108,8 +108,8 @@ def dashboard(request: Request, db: Session = Depends(get_db)):
         },
     )
 
-@router.get("/app/overview", response_class=HTMLResponse)
-def overview(request: Request, db: Session = Depends(get_db), start: str | None = None, end: str | None = None):
+@router.get("/app/analytics", response_class=HTMLResponse)
+def analytics_page(request: Request, db: Session = Depends(get_db), start: str | None = None, end: str | None = None):
     uid = get_current_user_id(request)
     if not uid:
         return RedirectResponse(url="/auth/login", status_code=303)
@@ -251,7 +251,7 @@ def overview(request: Request, db: Session = Depends(get_db), start: str | None 
             )
 
     return templates.TemplateResponse(
-        "overview.html",
+        "analytics.html",
         {
             "request": request,
             "user": user,
@@ -304,7 +304,7 @@ def _get_overview_data(db: Session, user: User, start: str | None, end: str | No
     bookings = q.order_by(Booking.start_date.asc()).all()
     return bookings, rooms_map, period_start, period_end
 
-@router.get("/app/overview/download/csv")
+@router.get("/app/analytics/download/csv")
 def download_csv_report(request: Request, db: Session = Depends(get_db), start: str | None = None, end: str | None = None):
     uid = get_current_user_id(request)
     if not uid:
@@ -320,7 +320,7 @@ def download_csv_report(request: Request, db: Session = Depends(get_db), start: 
         headers={"Content-Disposition": f"attachment; filename=booking_report_{date.today().isoformat()}.csv"}
     )
 
-@router.get("/app/overview/download/pdf")
+@router.get("/app/analytics/download/pdf")
 def download_pdf_report(request: Request, db: Session = Depends(get_db), start: str | None = None, end: str | None = None):
     uid = get_current_user_id(request)
     if not uid:
