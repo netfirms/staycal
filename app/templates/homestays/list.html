@@ -11,9 +11,16 @@
 <div class="bg-white p-4 rounded-xl shadow-sm border">
     <ul class="divide-y">
         {% for hs in homestays %}
-        <li class="py-3 flex items-center justify-between">
-            <div>
-                <div class="font-medium">{{ hs.name }}</div>
+        <li class="py-4 flex flex-wrap items-center gap-4">
+            <div class="w-full md:w-40">
+                {% if hs.image_url %}
+                <img src="{{ hs.image_url }}" alt="{{ hs.name }}" class="w-full h-24 rounded-lg object-cover border" />
+                {% else %}
+                <div class="w-full h-24 rounded-lg bg-gray-100 border flex items-center justify-center text-gray-400 text-sm">No Image</div>
+                {% endif %}
+            </div>
+            <div class="flex-1">
+                <div class="font-medium text-lg">{{ hs.name }}</div>
                 <div class="text-sm text-gray-600">{{ hs.address }}</div>
             </div>
             <div class="flex items-center gap-2">
@@ -28,7 +35,7 @@
             </div>
         </li>
         {% else %}
-        <li class="py-3 text-center text-gray-600">
+        <li class="py-4 text-center text-gray-600">
             You haven't added any properties yet. <a href="/app/homestays/new" class="text-blue-600 underline">Add one now</a> to get started.
         </li>
         {% endfor %}
