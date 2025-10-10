@@ -23,7 +23,7 @@ def calendar_view(request: Request, year: int, month: int, room_id: int, db: Ses
     try:
         run_auto_checkout(db)
     except Exception:
-        pass
+        db.rollback()
     first_wd, days = cal.monthrange(year, month)  # Monday=0 .. Sunday=6
     start = date(year, month, 1)
     end = date(year, month, days)
@@ -270,7 +270,7 @@ async def booking_update(
     start_date: str = Form(...),
     end_date: str = Form(...),
     price: float | None = Form(None),
-    status: str = Form(BookingStatus.CONFIRMED.value),
+    status: str = Form(BookingStatus.CONFIRMED),
     comment: str = Form(""),
     image: UploadFile | None = File(None),
 ):

@@ -1,17 +1,18 @@
 import logging
+
 from fastapi import FastAPI
-from fastapi.staticfiles import StaticFiles
 from fastapi.responses import RedirectResponse
+from fastapi.staticfiles import StaticFiles
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
-from .limiter import limiter
+
+from .config import settings
 from .db import SessionLocal
-from . import models  # ensure models are imported so tables are registered
+from .limiter import limiter
+from .models import User
 from .routers import auth_views, app_views, calendar_htmx_views, admin_views, public_views
 from .routers import rooms_views, bookings_views, homestays_views
 from .routers import settings_views
-from .config import settings
-from .models import User
 from .security import hash_password
 
 # --- Logging configuration ---
@@ -25,34 +26,6 @@ for _name in ("uvicorn", "uvicorn.error", "uvicorn.access"):
     logging.getLogger(_name).setLevel(_level)
 logger = logging.getLogger("app.startup")
 logger.info("Starting %s (DEBUG=%s)", settings.APP_NAME, getattr(settings, "DEBUG", False))
-
-# NOTE: Schema creation is now handled exclusively by Alembic migrations.
-# The Base.metadata.create_all() call has been removed to prevent race conditions.
-
-# Bootstrap a default admin user if none exists
-def _ensure_default_admin():
-    db = SessionLocal()
-    try:
-        exists = db.query(User).filter(User.role == "admin").first()
-        if exists:
-            return
-        email = getattr(settings, "ADMIN_EMAIL", "admin@staycal.local")
-        password = getattr(settings, "ADMIN_PASSWORD", "admin12345")
-        # If email is taken by a non-admin, promote it to admin
-        user = db.query(User).filter(User.email == email).first()
-        if user:
-            user.role = "admin"
-        else:
-            user = User(email=email, hashed_password=hash_password(password), role="admin")
-            db.add(user)
-        db.commit()
-    except Exception:
-        # Do not block startup if seeding fails
-        db.rollback()
-    finally:
-        db.close()
-
-_ensure_default_admin()
 
 app = FastAPI(
     title=settings.APP_NAME,
@@ -72,6 +45,33 @@ app = FastAPI(
         }
     ],
 )
+
+@app.on_event("startup")
+def startup_event():
+    """Runs startup tasks, like ensuring a default admin exists."""
+    logger.info("Running startup tasks...")
+
+    def _ensure_default_admin():
+        db = SessionLocal()
+        try:
+            if db.query(User).filter(User.role == "admin").first():
+                return
+            email = getattr(settings, "ADMIN_EMAIL", "admin@staycal.local")
+            password = getattr(settings, "ADMIN_PASSWORD", "admin12345")
+            user = db.query(User).filter(User.email == email).first()
+            if user:
+                user.role = "admin"
+            else:
+                user = User(email=email, hashed_password=hash_password(password), role="admin", is_verified=True)
+                db.add(user)
+            db.commit()
+            logger.info("Default admin user ensured.")
+        finally:
+            db.close()
+
+    _ensure_default_admin()
+    logger.info("Startup tasks complete.")
+
 
 # Add the limiter to the app state
 app.state.limiter = limiter

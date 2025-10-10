@@ -1,18 +1,29 @@
-from fastapi import APIRouter, Depends, Request, Form
+from fastapi import APIRouter, Depends, Request, Form, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse
-from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from datetime import datetime, date
 import os
 from ..db import get_db
-from ..models import User, Homestay, Subscription, SubscriptionStatus, PlanName, Room, Booking, BookingStatus
-from ..security import get_current_user_id
+from ..models import User, Homestay, Subscription, SubscriptionStatus, Room, Booking, BookingStatus, UserRole, Plan
+from ..security import get_current_user_id, hash_password
 from ..config import settings
 from ..services.media import _ensure_cloudinary_configured
+from ..templating import templates
 
 router = APIRouter(prefix="/admin", tags=["admin"])
-templates = Jinja2Templates(directory="app/templates")
+
+# Dependency to protect admin routes
+def require_admin(request: Request, db: Session = Depends(get_db)) -> User:
+    uid = get_current_user_id(request)
+    if not uid:
+        raise HTTPException(status_code=307, headers={"Location": "/admin/login"})
+    
+    user = db.query(User).get(uid)
+    if not user or user.role != "admin":
+        raise HTTPException(status_code=403, detail="Forbidden")
+    
+    return user
 
 @router.get("/login", response_class=HTMLResponse)
 def admin_login_form(request: Request):
@@ -93,15 +104,7 @@ def admin_login(request: Request, email: str = Form(...), password: str = Form(.
 
 
 @router.get("/", response_class=HTMLResponse)
-def admin_dashboard(request: Request, db: Session = Depends(get_db)):
-    uid = get_current_user_id(request)
-    if not uid:
-        return RedirectResponse(url="/admin/login", status_code=303)
-    # require admin role
-    user = db.query(User).get(uid)
-    if not user or user.role != "admin":
-        return HTMLResponse("<h2>Forbidden</h2>", status_code=403)
-
+def admin_dashboard(request: Request, db: Session = Depends(get_db), admin_user: User = Depends(require_admin)):
     # Base lists used by existing dashboard tables
     users = db.query(User).all()
     homestays = db.query(Homestay).all()
@@ -124,13 +127,13 @@ def admin_dashboard(request: Request, db: Session = Depends(get_db)):
     # Today check-ins and check-outs (simple definition)
     checkins_today = (
         db.query(func.count(Booking.id))
-        .filter(Booking.start_date == today, Booking.status.in_([BookingStatus.CONFIRMED, BookingStatus.CHECKED_IN]))
+        .filter(Booking.start_date == today, Booking.status.in_([BookingStatus.CONFIRMED.value, BookingStatus.CHECKED_IN.value]))
         .scalar()
         or 0
     )
     checkouts_today = (
         db.query(func.count(Booking.id))
-        .filter(Booking.end_date == today, Booking.status.in_([BookingStatus.CONFIRMED, BookingStatus.CHECKED_IN, BookingStatus.CHECKED_OUT]))
+        .filter(Booking.end_date == today, Booking.status.in_([BookingStatus.CONFIRMED.value, BookingStatus.CHECKED_IN.value, BookingStatus.CHECKED_OUT.value]))
         .scalar()
         or 0
     )
@@ -147,7 +150,7 @@ def admin_dashboard(request: Request, db: Session = Depends(get_db)):
         .filter(
             Booking.start_date >= month_start,
             Booking.start_date < next_month_start,
-            Booking.status.in_([BookingStatus.CONFIRMED, BookingStatus.CHECKED_IN, BookingStatus.CHECKED_OUT]),
+            Booking.status.in_([BookingStatus.CONFIRMED.value, BookingStatus.CHECKED_IN.value, BookingStatus.CHECKED_OUT.value]),
         )
         .scalar()
         or 0
@@ -156,14 +159,15 @@ def admin_dashboard(request: Request, db: Session = Depends(get_db)):
     # Booking status distribution
     status_counts = {}
     for st in BookingStatus:
-        cnt = db.query(func.count(Booking.id)).filter(Booking.status == st).scalar() or 0
+        cnt = db.query(func.count(Booking.id)).filter(Booking.status == st.value).scalar() or 0
         status_counts[st.value] = cnt
 
     # Plan distribution (by current subscriptions)
-    plan_counts = {p.value: 0 for p in PlanName}
-    for p in PlanName:
-        cnt = db.query(func.count(Subscription.id)).filter(Subscription.plan_name == p).scalar() or 0
-        plan_counts[p.value] = cnt
+    plans = db.query(Plan).all()
+    plan_counts = {p.name: 0 for p in plans}
+    for sub in subs:
+        if sub.plan.name in plan_counts:
+            plan_counts[sub.plan.name] += 1
 
     recent_users = db.query(User).order_by(User.created_at.desc()).limit(5).all()
     recent_bookings = db.query(Booking).order_by(Booking.start_date.desc()).limit(5).all()
@@ -192,44 +196,91 @@ def admin_dashboard(request: Request, db: Session = Depends(get_db)):
         "admin/dashboard.html",
         {
             "request": request,
+            "user": admin_user, # Pass the admin_user object as 'user'
             "users": users,
             "homestays": homestays,
             "subs": subs,
             "subs_map": subs_map,
-            "PlanName": PlanName,
+            "plans": plans,
             "SubscriptionStatus": SubscriptionStatus,
             "analytics": analytics,
-            # Pricing for display/editing
-            "pricing": {
-                "basic_monthly": getattr(settings, "PLAN_BASIC_MONTHLY", 249),
-                "basic_yearly": getattr(settings, "PLAN_BASIC_YEARLY", 2490),
-                "pro_monthly": getattr(settings, "PLAN_PRO_MONTHLY", 699),
-                "pro_yearly": getattr(settings, "PLAN_PRO_YEARLY", 6990),
-            },
-            "pricing_saved": request.query_params.get("pricing_saved"),
-            "pricing_error": request.query_params.get("pricing_error"),
         },
     )
 
+@router.get("/users", response_class=HTMLResponse)
+def admin_users(request: Request, db: Session = Depends(get_db), admin_user: User = Depends(require_admin)):
+    users = db.query(User).order_by(User.id.asc()).all()
+    return templates.TemplateResponse("admin/users.html", {"request": request, "users": users})
+
+@router.get("/users/new", response_class=HTMLResponse)
+def admin_user_new_form(request: Request, admin_user: User = Depends(require_admin)):
+    roles_list = [UserRole.ADMIN, UserRole.OWNER, UserRole.STAFF]
+    return templates.TemplateResponse("admin/user_form.html", {"request": request, "roles": roles_list, "user": None})
+
+@router.post("/users/new", response_class=HTMLResponse)
+def admin_user_new(request: Request, db: Session = Depends(get_db), admin_user: User = Depends(require_admin), email: str = Form(...), password: str = Form(...), role: str = Form(...), is_verified: bool = Form(False)):
+    existing_user = db.query(User).filter(User.email == email).first()
+    if existing_user:
+        roles_list = [UserRole.ADMIN, UserRole.OWNER, UserRole.STAFF]
+        return templates.TemplateResponse("admin/user_form.html", {"request": request, "roles": roles_list, "user": None, "error": "User with this email already exists."})
+    
+    new_user = User(
+        email=email,
+        hashed_password=hash_password(password),
+        role=role,
+        is_verified=is_verified
+    )
+    db.add(new_user)
+    db.commit()
+    return RedirectResponse(url="/admin/users", status_code=303)
+
+@router.get("/users/{user_id}/edit", response_class=HTMLResponse)
+def admin_user_edit_form(request: Request, user_id: int, db: Session = Depends(get_db), admin_user: User = Depends(require_admin)):
+    user = db.query(User).get(user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    roles_list = [UserRole.ADMIN, UserRole.OWNER, UserRole.STAFF]
+    return templates.TemplateResponse("admin/user_form.html", {"request": request, "roles": roles_list, "user": user})
+
+@router.post("/users/{user_id}/edit", response_class=HTMLResponse)
+def admin_user_edit(request: Request, user_id: int, db: Session = Depends(get_db), admin_user: User = Depends(require_admin), email: str = Form(...), password: str = Form(None), role: str = Form(...), is_verified: bool = Form(False)):
+    user = db.query(User).get(user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    user.email = email
+    user.role = role
+    user.is_verified = is_verified
+    if password:
+        user.hashed_password = hash_password(password)
+    
+    db.commit()
+    return RedirectResponse(url="/admin/users", status_code=303)
+
+@router.post("/users/{user_id}/delete")
+def admin_user_delete(request: Request, user_id: int, db: Session = Depends(get_db), admin_user: User = Depends(require_admin)):
+    user = db.query(User).get(user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    db.delete(user)
+    db.commit()
+    return RedirectResponse(url="/admin/users", status_code=303)
+
 
 @router.get("/plans", response_class=HTMLResponse)
-def admin_plans(request: Request, db: Session = Depends(get_db)):
-    uid = get_current_user_id(request)
-    if not uid:
-        return RedirectResponse(url="/admin/login", status_code=303)
-    user = db.query(User).get(uid)
-    if not user or user.role != "admin":
-        return HTMLResponse("<h2>Forbidden</h2>", status_code=403)
+def admin_plans(request: Request, db: Session = Depends(get_db), admin_user: User = Depends(require_admin)):
     users = db.query(User).order_by(User.id.asc()).all()
     subs = db.query(Subscription).all()
     subs_map = {s.owner_id: s for s in subs}
+    plans = db.query(Plan).order_by(Plan.id.asc()).all()
     return templates.TemplateResponse(
         "admin/plans.html",
         {
             "request": request,
             "users": users,
             "subs_map": subs_map,
-            "PlanName": PlanName,
+            "plans": plans,
             "SubscriptionStatus": SubscriptionStatus,
         },
     )
@@ -240,18 +291,12 @@ def admin_plans_save(
     request: Request,
     db: Session = Depends(get_db),
     owner_id: int = Form(...),
-    plan_name: str = Form(...),
+    plan_id: int = Form(...),
     status: str = Form(...),
     expires_at: str | None = Form(None),
     return_to: str | None = Form(None),
+    admin_user: User = Depends(require_admin),
 ):
-    uid = get_current_user_id(request)
-    if not uid:
-        return RedirectResponse(url="/admin/login", status_code=303)
-    admin_user = db.query(User).get(uid)
-    if not admin_user or admin_user.role != "admin":
-        return HTMLResponse("<h2>Forbidden</h2>", status_code=403)
-
     target = db.query(User).get(owner_id)
     if not target:
         return HTMLResponse("<h2>User not found</h2>", status_code=404)
@@ -262,11 +307,7 @@ def admin_plans_save(
         sub = Subscription(owner_id=owner_id)
         db.add(sub)
 
-    # Coerce enums safely
-    try:
-        sub.plan_name = PlanName(plan_name)
-    except Exception:
-        sub.plan_name = PlanName.FREE
+    sub.plan_id = plan_id
     try:
         sub.status = SubscriptionStatus(status)
     except Exception:
@@ -295,15 +336,62 @@ def admin_plans_save(
         dest = "/admin/plans"
     return RedirectResponse(url=dest, status_code=303)
 
+@router.post("/plans/{subscription_id}/delete")
+def admin_plan_delete(request: Request, subscription_id: int, db: Session = Depends(get_db), admin_user: User = Depends(require_admin)):
+    sub = db.query(Subscription).get(subscription_id)
+    if not sub:
+        raise HTTPException(status_code=404, detail="Subscription not found")
+    
+    db.delete(sub)
+    db.commit()
+    return RedirectResponse(url="/admin/plans", status_code=303)
+
+@router.get("/plans/manage", response_class=HTMLResponse)
+def admin_plan_management(request: Request, db: Session = Depends(get_db), admin_user: User = Depends(require_admin)):
+    plans = db.query(Plan).order_by(Plan.id.asc()).all()
+    return templates.TemplateResponse("admin/plan_management.html", {"request": request, "plans": plans, "plan": None})
+
+@router.get("/plans/{plan_id}/edit", response_class=HTMLResponse)
+def admin_plan_edit_form(request: Request, plan_id: int, db: Session = Depends(get_db), admin_user: User = Depends(require_admin)):
+    plan = db.query(Plan).get(plan_id)
+    if not plan:
+        raise HTTPException(status_code=404, detail="Plan not found")
+    plans = db.query(Plan).order_by(Plan.id.asc()).all()
+    return templates.TemplateResponse("admin/plan_management.html", {"request": request, "plans": plans, "plan": plan})
+
+@router.post("/plans/save/{plan_id}", response_class=HTMLResponse)
+def admin_plan_save(request: Request, plan_id: int, db: Session = Depends(get_db), admin_user: User = Depends(require_admin), name: str = Form(...), price_monthly: float = Form(...), price_yearly: float = Form(...), room_limit: int = Form(...), user_limit: int = Form(...), is_active: bool = Form(False)):
+    if plan_id == 0: # Create new plan
+        plan = Plan()
+        db.add(plan)
+    else: # Edit existing plan
+        plan = db.query(Plan).get(plan_id)
+        if not plan:
+            raise HTTPException(status_code=404, detail="Plan not found")
+
+    plan.name = name
+    plan.price_monthly = price_monthly
+    plan.price_yearly = price_yearly
+    plan.room_limit = room_limit
+    plan.user_limit = user_limit
+    plan.is_active = is_active
+    
+    db.commit()
+    return RedirectResponse(url="/admin/plans/manage", status_code=303)
+
+@router.post("/plans/{plan_id}/delete")
+def admin_plan_delete(request: Request, plan_id: int, db: Session = Depends(get_db), admin_user: User = Depends(require_admin)):
+    plan = db.query(Plan).get(plan_id)
+    if not plan:
+        raise HTTPException(status_code=404, detail="Plan not found")
+    
+    db.delete(plan)
+    db.commit()
+    return RedirectResponse(url="/admin/plans/manage", status_code=303)
+
 
 @router.get("/cloudinary", response_class=HTMLResponse)
-def admin_cloudinary(request: Request, db: Session = Depends(get_db)):
-    uid = get_current_user_id(request)
-    if not uid:
-        return RedirectResponse(url="/admin/login", status_code=303)
-    user = db.query(User).get(uid)
-    if not user or user.role != "admin":
-        return HTMLResponse("<h2>Forbidden</h2>", status_code=403)
+def admin_cloudinary(request: Request, db: Session = Depends(get_db), admin_user: User = Depends(require_admin)):
     current_url = getattr(settings, "CLOUDINARY_URL", "")
     ok = False
     try:
@@ -317,14 +405,7 @@ def admin_cloudinary(request: Request, db: Session = Depends(get_db)):
 
 
 @router.post("/cloudinary")
-def admin_cloudinary_save(request: Request, db: Session = Depends(get_db), cloudinary_url: str = Form("") ):
-    uid = get_current_user_id(request)
-    if not uid:
-        return RedirectResponse(url="/admin/login", status_code=303)
-    user = db.query(User).get(uid)
-    if not user or user.role != "admin":
-        return HTMLResponse("<h2>Forbidden</h2>", status_code=403)
-
+def admin_cloudinary_save(request: Request, db: Session = Depends(get_db), cloudinary_url: str = Form(""), admin_user: User = Depends(require_admin)):
     url = (cloudinary_url or "").strip()
     # update runtime settings and environment
     os.environ["CLOUDINARY_URL"] = url
@@ -349,52 +430,3 @@ def admin_cloudinary_save(request: Request, db: Session = Depends(get_db), cloud
         "admin/cloudinary.html",
         {"request": request, "current_url": url, "configured": ok, "message": msg, "error": err},
     )
-
-
-@router.post("/pricing")
-def admin_pricing_save(
-    request: Request,
-    db: Session = Depends(get_db),
-    basic_monthly: str = Form(...),
-    basic_yearly: str = Form(...),
-    pro_monthly: str = Form(...),
-    pro_yearly: str = Form(...),
-):
-    uid = get_current_user_id(request)
-    if not uid:
-        return RedirectResponse(url="/admin/login", status_code=303)
-    user = db.query(User).get(uid)
-    if not user or user.role != "admin":
-        return HTMLResponse("<h2>Forbidden</h2>", status_code=403)
-
-    def _parse_float(s: str) -> float | None:
-        try:
-            v = float((s or "").strip())
-            if v < 0:
-                return None
-            return v
-        except Exception:
-            return None
-
-    bm = _parse_float(basic_monthly)
-    by = _parse_float(basic_yearly)
-    pm = _parse_float(pro_monthly)
-    py = _parse_float(pro_yearly)
-
-    if None in (bm, by, pm, py):
-        return RedirectResponse(url="/admin?pricing_error=invalid", status_code=303)
-
-    # Persist in environment and in-memory settings (runtime)
-    os.environ["PLAN_BASIC_MONTHLY"] = str(bm)
-    os.environ["PLAN_BASIC_YEARLY"] = str(by)
-    os.environ["PLAN_PRO_MONTHLY"] = str(pm)
-    os.environ["PLAN_PRO_YEARLY"] = str(py)
-    try:
-        setattr(settings, "PLAN_BASIC_MONTHLY", bm)
-        setattr(settings, "PLAN_BASIC_YEARLY", by)
-        setattr(settings, "PLAN_PRO_MONTHLY", pm)
-        setattr(settings, "PLAN_PRO_YEARLY", py)
-    except Exception:
-        pass
-
-    return RedirectResponse(url="/admin?pricing_saved=1", status_code=303)

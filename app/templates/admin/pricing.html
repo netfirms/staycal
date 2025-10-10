@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Subscription Pricing{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 sm:px-8">
+    <div class="py-8">
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-2xl font-semibold leading-tight">Manage Subscription Pricing</h2>
+            <a href="/admin" class="text-sm text-blue-600 hover:underline">&larr; Back to Dashboard</a>
+        </div>
+
+        <div class="bg-white p-6 rounded-lg shadow-md border">
+            <form method="post" action="/admin/pricing" class="grid md:grid-cols-2 gap-6 items-end">
+                
+                <div class="md:col-span-2">
+                    <h3 class="text-lg font-medium text-gray-800 border-b pb-2">Basic Plan</h3>
+                </div>
+
+                <div>
+                    <label for="basic_monthly" class="block text-sm font-medium text-gray-700">Monthly Price (THB)</label>
+                    <input type="number" id="basic_monthly" name="basic_monthly" step="0.01" class="mt-1 border rounded-md p-2 w-full shadow-sm focus:ring-indigo-500 focus:border-indigo-500" value="{{ '%.2f'|format(pricing.basic_monthly|float) }}" />
+                </div>
+
+                <div>
+                    <label for="basic_yearly" class="block text-sm font-medium text-gray-700">Yearly Price (THB)</label>
+                    <input type="number" id="basic_yearly" name="basic_yearly" step="0.01" class="mt-1 border rounded-md p-2 w-full shadow-sm focus:ring-indigo-500 focus:border-indigo-500" value="{{ '%.2f'|format(pricing.basic_yearly|float) }}" />
+                </div>
+
+                <div class="md:col-span-2 mt-4">
+                    <h3 class="text-lg font-medium text-gray-800 border-b pb-2">Pro Plan</h3>
+                </div>
+
+                <div>
+                    <label for="pro_monthly" class="block text-sm font-medium text-gray-700">Monthly Price (THB)</label>
+                    <input type="number" id="pro_monthly" name="pro_monthly" step="0.01" class="mt-1 border rounded-md p-2 w-full shadow-sm focus:ring-indigo-500 focus:border-indigo-500" value="{{ '%.2f'|format(pricing.pro_monthly|float) }}" />
+                </div>
+
+                <div>
+                    <label for="pro_yearly" class="block text-sm font-medium text-gray-700">Yearly Price (THB)</label>
+                    <input type="number" id="pro_yearly" name="pro_yearly" step="0.01" class="mt-1 border rounded-md p-2 w-full shadow-sm focus:ring-indigo-500 focus:border-indigo-500" value="{{ '%.2f'|format(pricing.pro_yearly|float) }}" />
+                </div>
+
+                <div class="md:col-span-2 text-right mt-4">
+                    {% if pricing_saved %}
+                        <span class="text-sm px-3 py-2 rounded-md bg-green-100 text-green-800 mr-4">Pricing saved successfully!</span>
+                    {% elif pricing_error %}
+                        <span class="text-sm px-3 py-2 rounded-md bg-red-100 text-red-800 mr-4">Error: Invalid values provided.</span>
+                    {% endif %}
+                    <button type="submit" class="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">Save Pricing</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

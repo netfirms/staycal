@@ -1,13 +1,14 @@
+from __future__ import annotations
 from datetime import datetime
+from typing import TYPE_CHECKING, Optional
 from enum import Enum as PyEnum
-from sqlalchemy import Integer, String, ForeignKey, DateTime, Enum, UniqueConstraint
+from sqlalchemy import Integer, String, ForeignKey, DateTime, Enum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from ..db import Base
 
-class PlanName(str, PyEnum):
-    FREE = "free"
-    BASIC = "basic"
-    PRO = "pro"
+if TYPE_CHECKING:
+    from .user import User
+    from .plan import Plan
 
 class SubscriptionStatus(str, PyEnum):
     ACTIVE = "active"
@@ -16,14 +17,13 @@ class SubscriptionStatus(str, PyEnum):
 
 class Subscription(Base):
     __tablename__ = "subscriptions"
-    __table_args__ = (
-        UniqueConstraint("owner_id", name="uq_subscription_owner"),
-    )
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    owner_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
-    plan_name: Mapped[PlanName] = mapped_column(Enum(PlanName), default=PlanName.FREE, nullable=False)
-    status: Mapped[SubscriptionStatus] = mapped_column(Enum(SubscriptionStatus), default=SubscriptionStatus.ACTIVE, nullable=False)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    owner_id: Mapped[int] = mapped_column(ForeignKey("users.id"), unique=True, nullable=False)
+    status: Mapped[str] = mapped_column(Enum(SubscriptionStatus), default=SubscriptionStatus.ACTIVE, nullable=False)
     expires_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    plan_id: Mapped[int] = mapped_column(ForeignKey("plans.id"), nullable=False)
 
-    owner: Mapped["User"] = relationship(back_populates="subscriptions")
+    # Relationships
+    owner: Mapped[User] = relationship(back_populates="subscriptions")
+    plan: Mapped[Plan] = relationship(back_populates="subscriptions")

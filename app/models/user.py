@@ -1,10 +1,11 @@
 from datetime import datetime
 from typing import Optional
-from sqlalchemy import Integer, String, ForeignKey, DateTime, Enum
+from sqlalchemy import Integer, String, ForeignKey, DateTime, Boolean
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from ..db import Base
+from enum import Enum
 
-class UserRole(str):
+class UserRole(str, Enum):
     ADMIN = "admin"
     OWNER = "owner"
     STAFF = "staff"
@@ -19,6 +20,10 @@ class User(Base):
     homestay_id: Mapped[int | None] = mapped_column(ForeignKey("homestays.id"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     currency: Mapped[str] = mapped_column(String(8), default="USD", nullable=False)
+
+    # Email verification fields
+    is_verified: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    verification_token: Mapped[str | None] = mapped_column(String(255), unique=True, index=True)
 
     # User is staff/member of a homestay via users.homestay_id -> homestays.id
     homestay: Mapped[Optional["Homestay"]] = relationship(back_populates="users", foreign_keys=[homestay_id])

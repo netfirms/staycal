@@ -34,7 +34,7 @@ services:
       - "8000:8000"
     volumes:
       - ./:/app
-    command: /bin/sh -c " python -m pip install --upgrade pip && pip install -r requirements.txt && alembic upgrade head || true; uvicorn app.main:app --host 0.0.0.0 --port 8000 --log-level debug --reload"
+    command: /bin/sh -c "pip install -r requirements.txt && alembic upgrade head || true; uvicorn app.main:app --host 0.0.0.0 --port 8000 --log-level debug --reload"
 
 volumes:
   pgdata:

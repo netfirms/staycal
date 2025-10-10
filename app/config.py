@@ -9,6 +9,7 @@ class Settings:
     SECRET_KEY: str = os.getenv("SECRET_KEY", "dev-secret-key-change-me")
     ENVIRONMENT: str = os.getenv("ENVIRONMENT", "development").lower()
     DEBUG: bool = os.getenv("DEBUG", "false").lower() == "true"
+    BASE_URL: str = os.getenv("BASE_URL", "http://localhost:8000")
     
     # Auth & Session
     SESSION_COOKIE_NAME: str = os.getenv("SESSION_COOKIE_NAME", "staycal_session")
@@ -23,12 +24,15 @@ class Settings:
     ADMIN_EMAIL: str = os.getenv("ADMIN_EMAIL", "admin@staycal.local")
     ADMIN_PASSWORD: str = os.getenv("ADMIN_PASSWORD", "admin12345")
     
-    # Subscription pricing (THB)
-    PLAN_BASIC_MONTHLY: float = float(os.getenv("PLAN_BASIC_MONTHLY", "249"))
-    PLAN_BASIC_YEARLY: float = float(os.getenv("PLAN_BASIC_YEARLY", "2490"))
-    PLAN_PRO_MONTHLY: float = float(os.getenv("PLAN_PRO_MONTHLY", "699"))
-    PLAN_PRO_YEARLY: float = float(os.getenv("PLAN_PRO_YEARLY", "6990"))
-    
+    # Mail Settings
+    MAIL_SERVER: str = os.getenv("MAIL_SERVER", "smtp.mailtrap.io")
+    MAIL_PORT: int = int(os.getenv("MAIL_PORT", "2525"))
+    MAIL_USERNAME: str = os.getenv("MAIL_USERNAME", "")
+    MAIL_PASSWORD: str = os.getenv("MAIL_PASSWORD", "")
+    MAIL_FROM: str = os.getenv("MAIL_FROM", "noreply@gostay.pro")
+    MAIL_STARTTLS: bool = os.getenv("MAIL_STARTTLS", "true").lower() == "true"
+    MAIL_SSL_TLS: bool = os.getenv("MAIL_SSL_TLS", "false").lower() == "true"
+
     # Upload constraints
     UPLOAD_IMAGE_MAX_MB: int = int(os.getenv("UPLOAD_IMAGE_MAX_MB", "5"))
     UPLOAD_IMAGE_MAX_BYTES: int = UPLOAD_IMAGE_MAX_MB * 1024 * 1024

@@ -257,7 +257,7 @@ def api_bookings(request: Request, db: Session = Depends(get_db), start: Optiona
     try:
         run_auto_checkout(db)
     except Exception:
-        pass
+        db.rollback()
     q = db.query(Booking)
     # limit to user's homestay rooms
     if user.homestay_id:

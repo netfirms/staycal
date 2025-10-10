@@ -21,7 +21,7 @@ def dashboard(request: Request, db: Session = Depends(get_db)):
     try:
         run_auto_checkout(db)
     except Exception:
-        pass
+        db.rollback()
     rooms = []
     rooms_map = {}
     checkins_today = []
@@ -43,7 +43,7 @@ def dashboard(request: Request, db: Session = Depends(get_db)):
                     Booking.room_id.in_(room_ids),
                     Booking.start_date == today,
                     Booking.status != BookingStatus.CANCELLED,
-                )
+                    )
                 .all()
             )
             checkouts_today = (
@@ -52,7 +52,7 @@ def dashboard(request: Request, db: Session = Depends(get_db)):
                     Booking.room_id.in_(room_ids),
                     Booking.end_date == today,
                     Booking.status != BookingStatus.CANCELLED,
-                )
+                    )
                 .all()
             )
             upcoming_count = (
@@ -61,7 +61,7 @@ def dashboard(request: Request, db: Session = Depends(get_db)):
                     Booking.room_id.in_(room_ids),
                     Booking.start_date >= today,
                     Booking.status != BookingStatus.CANCELLED,
-                )
+                    )
                 .count()
             )
     return templates.TemplateResponse(
@@ -92,8 +92,8 @@ def overview(request: Request, db: Session = Depends(get_db), start: str | None 
     # Auto-checkout in case any past stays need status update
     try:
         run_auto_checkout(db)
-    except Exception:
-        pass
+    except Exception:  # If auto-checkout fails, rollback to not break the session
+        db.rollback()
 
     # Parse optional period
     period_start = None

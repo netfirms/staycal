@@ -3,42 +3,11 @@
 <div class="mb-4 flex items-center justify-between">
   <h1 class="text-2xl font-semibold">Admin</h1>
   <div class="flex gap-2">
+    <a href="/admin/users" class="px-3 py-2 border rounded bg-white hover:bg-gray-50">Manage Users</a>
+    <a href="/admin/plans" class="px-3 py-2 border rounded bg-white hover:bg-gray-50">Assign Subscriptions</a>
+    <a href="/admin/plans/manage" class="px-3 py-2 border rounded bg-white hover:bg-gray-50">Manage Plans</a>
     <a href="/admin/cloudinary" class="px-3 py-2 border rounded bg-white hover:bg-gray-50">Cloudinary Settings</a>
-    <a href="/admin/plans" class="px-3 py-2 border rounded bg-white hover:bg-gray-50">Manage Plans</a>
   </div>
-</div>
-
-{# Subscription Pricing quick edit #}
-<div class="bg-white p-4 rounded-xl shadow-sm border mb-4">
-  <div class="flex items-center justify-between mb-2">
-    <h2 class="font-medium">Subscription Pricing</h2>
-    {% if pricing_saved %}
-      <span class="text-xs px-2 py-1 rounded bg-green-100 text-green-800">Saved</span>
-    {% elif pricing_error %}
-      <span class="text-xs px-2 py-1 rounded bg-red-100 text-red-800">Invalid values</span>
-    {% endif %}
-  </div>
-  <form method="post" action="/admin/pricing" class="grid md:grid-cols-4 gap-3 items-end">
-    <div>
-      <label class="block text-xs text-gray-600">Basic Monthly (THB)</label>
-      <input name="basic_monthly" type="number" step="0.01" class="border rounded p-2 w-full" value="{{ '%.2f'|format(pricing.basic_monthly|float) }}" />
-    </div>
-    <div>
-      <label class="block text-xs text-gray-600">Basic Yearly (THB)</label>
-      <input name="basic_yearly" type="number" step="0.01" class="border rounded p-2 w-full" value="{{ '%.2f'|format(pricing.basic_yearly|float) }}" />
-    </div>
-    <div>
-      <label class="block text-xs text-gray-600">Pro Monthly (THB)</label>
-      <input name="pro_monthly" type="number" step="0.01" class="border rounded p-2 w-full" value="{{ '%.2f'|format(pricing.pro_monthly|float) }}" />
-    </div>
-    <div>
-      <label class="block text-xs text-gray-600">Pro Yearly (THB)</label>
-      <input name="pro_yearly" type="number" step="0.01" class="border rounded p-2 w-full" value="{{ '%.2f'|format(pricing.pro_yearly|float) }}" />
-    </div>
-    <div class="md:col-span-4 text-right">
-      <button class="px-4 py-2 bg-blue-600 text-white rounded">Save Pricing</button>
-    </div>
-  </form>
 </div>
 
 {% if analytics %}
@@ -80,7 +49,7 @@
       </div>
       <div class="p-3 rounded border bg-gray-50">
         <div class="text-xs text-gray-600">Revenue (THB)</div>
-        <div class="text-lg font-semibold">฿{{ '%.2f'|format(analytics.monthly_revenue) }}</div>
+        <div class="text-lg font-semibold">{{ user.currency|currency_symbol }}{{ '%.2f'|format(analytics.monthly_revenue) }}</div>
       </div>
     </div>
   </div>
@@ -117,7 +86,7 @@
       {% for u in analytics.recent_users %}
       <li class="py-2 flex items-center justify-between">
         <div>{{ u.email }}</div>
-        <div class="text-xs text-gray-500">{{ u.created_at }}</div>
+        <div class="text-xs text-gray-500">{{ u.created_at.strftime('%Y-%m-%d %H:%M') }}</div>
       </li>
       {% else %}
       <li class="py-2 text-gray-500">No users.</li>
@@ -131,9 +100,9 @@
       <li class="py-2 flex items-center justify-between">
         <div>
           <div class="font-medium">{{ b.guest_name }}</div>
-          <div class="text-xs text-gray-500">{{ b.start_date }} → {{ b.end_date }} (status: {{ b.status.value }})</div>
+          <div class="text-xs text-gray-500">{{ b.start_date }} → {{ b.end_date }} (status: {{ b.status.value.replace('_',' ').title() }})</div>
         </div>
-        <div class="text-xs text-gray-700">{% if b.price is not none %}฿{{ '%.2f'|format(b.price|float) }}{% else %}-{% endif %}</div>
+        <div class="text-xs text-gray-700">{% if b.price is not none %}{{ user.currency|currency_symbol }}{{ '%.2f'|format(b.price|float) }}{% else %}-{% endif %}</div>
       </li>
       {% else %}
       <li class="py-2 text-gray-500">No bookings.</li>
@@ -162,13 +131,13 @@
       </thead>
       <tbody class="divide-y">
         {% for u in users %}
-        {% set sub = subs_map.get(u.id) if subs_map else None %}
+        {% set sub = subs_map.get(u.id) %}
         <tr>
           <td class="py-2 px-2">
             <div class="font-medium">{{ u.email }}</div>
             <div class="text-xs text-gray-500">id: {{ u.id }} · role: {{ u.role }}</div>
           </td>
-          <td class="py-2 px-2">{{ sub.plan_name.value if sub else '-' }}</td>
+          <td class="py-2 px-2">{{ sub.plan.name if sub and sub.plan else '-' }}</td>
           <td class="py-2 px-2">{{ sub.status.value if sub else '-' }}</td>
           <td class="py-2 px-2">{{ sub.expires_at.date().isoformat() if sub and sub.expires_at else '-' }}</td>
           <td class="py-2 px-2 text-right">
@@ -180,9 +149,9 @@
                   <input type="hidden" name="return_to" value="/admin" />
                   <div>
                     <label class="block text-xs text-gray-600">Plan</label>
-                    <select name="plan_name" class="border rounded p-1">
-                      {% for p in PlanName %}
-                        <option value="{{ p.value }}" {% if sub and sub.plan_name == p %}selected{% endif %}>{{ p.value }}</option>
+                    <select name="plan_id" class="border rounded p-1">
+                      {% for p in plans %}
+                        <option value="{{ p.id }}" {% if sub and sub.plan_id == p.id %}selected{% endif %}>{{ p.name }}</option>
                       {% endfor %}
                     </select>
                   </div>
@@ -212,28 +181,7 @@
   </div>
 </div>
 
-<div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-  <div class="bg-white p-4 rounded-xl shadow-sm border">
-    <h2 class="font-medium mb-2">Users</h2>
-    <div class="overflow-auto max-h-80">
-      <table class="w-full text-sm">
-        <thead>
-          <tr class="text-left border-b bg-gray-50">
-            <th class="py-2 px-2">Email</th>
-            <th class="py-2 px-2">Role</th>
-          </tr>
-        </thead>
-        <tbody class="divide-y">
-          {% for u in users %}
-          <tr>
-            <td class="py-2 px-2">{{ u.email }}</td>
-            <td class="py-2 px-2">{{ u.role }}</td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-  </div>
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
   <div class="bg-white p-4 rounded-xl shadow-sm border">
     <h2 class="font-medium mb-2">Properties</h2>
     <div class="overflow-auto max-h-80">
@@ -270,7 +218,7 @@
           {% for s in subs %}
           <tr>
             <td class="py-2 px-2">{{ s.owner_id }}</td>
-            <td class="py-2 px-2">{{ s.plan_name.value }}</td>
+            <td class="py-2 px-2">{{ s.plan.name if s.plan else '-' }}</td>
             <td class="py-2 px-2">{{ s.status.value }}</td>
           </tr>
           {% endfor %}
