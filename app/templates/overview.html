@@ -1,187 +1,85 @@
 {% extends 'base.html' %}
-{% block content %}
-<h1 class="text-xl font-semibold mb-4">Overview</h1>
 
-<div class="mb-4 flex flex-wrap gap-2 items-center">
-  <a href="/app" class="bg-white border px-3 py-2 rounded">Dashboard</a>
-  <a href="/app/homestays/" class="bg-white border px-3 py-2 rounded">Properties</a>
-  <a href="/app/rooms/" class="bg-white border px-3 py-2 rounded">Rooms</a>
-  <a href="/app/bookings/" class="bg-white border px-3 py-2 rounded">Bookings</a>
-  <form method="get" action="/app/overview" class="ml-auto flex flex-wrap items-end gap-2 bg-white border rounded p-2">
+{% block title %}Property Overview{% endblock %}
+
+{% block content %}
+<div class="flex flex-wrap items-center justify-between mb-4 gap-3">
+  <h1 class="text-2xl font-semibold">Property Overview</h1>
+  <div class="flex items-center gap-2">
+    <a href="/app/overview/download/pdf?start={{ period_start.isoformat() if period_start else '' }}&end={{ period_end.isoformat() if period_end else '' }}" class="px-3 py-2 border rounded bg-white text-sm hover:bg-gray-50">Download PDF</a>
+    <a href="/app/overview/download/csv?start={{ period_start.isoformat() if period_start else '' }}&end={{ period_end.isoformat() if period_end else '' }}" class="px-3 py-2 border rounded bg-white text-sm hover:bg-gray-50">Download CSV</a>
+  </div>
+</div>
+
+<div class="bg-white p-3 rounded-xl shadow-sm border mb-4">
+  <form method="get" action="/app/overview" class="flex flex-wrap items-end gap-2">
     <div>
-      <label class="block text-xs text-gray-600">Start</label>
-      <input type="date" name="start" class="border rounded p-1 text-sm" value="{{ period_start.isoformat() if period_start else '' }}" />
+      <label for="start" class="block text-xs text-gray-600">Start Date</label>
+      <input type="date" id="start" name="start" class="border rounded p-1.5" value="{{ period_start.isoformat() if period_start else '' }}" />
     </div>
     <div>
-      <label class="block text-xs text-gray-600">End</label>
-      <input type="date" name="end" class="border rounded p-1 text-sm" value="{{ period_end.isoformat() if period_end else '' }}" />
+      <label for="end" class="block text-xs text-gray-600">End Date</label>
+      <input type="date" id="end" name="end" class="border rounded p-1.5" value="{{ period_end.isoformat() if period_end else '' }}" />
     </div>
-    <div class="flex items-center gap-2">
-      <button class="px-3 py-2 bg-blue-600 text-white rounded text-sm">Apply</button>
-      <a href="/app/overview" class="px-3 py-2 border rounded text-sm">Clear</a>
-    </div>
+    <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded">Filter</button>
+    <a href="/app/overview" class="px-3 py-2 border rounded text-sm">Clear</a>
   </form>
 </div>
 
-{% if active %}
-<div class="bg-white p-4 rounded shadow mb-6">
-  <h2 class="font-medium mb-2">Active Property</h2>
-  {% if period_start or period_end %}
-    <div class="text-xs text-gray-600 mb-2">Showing: {{ period_start.isoformat() if period_start else '...' }} to {{ period_end.isoformat() if period_end else '...' }}</div>
-  {% else %}
-    <div class="text-xs text-gray-600 mb-2">Showing: All time</div>
-  {% endif %}
-  <div class="flex flex-wrap items-center justify-between">
-    <div class="flex items-center gap-3">
-      {% if active.image_url %}
-        <img src="{{ active.image_url }}" alt="{{ active.name }}" class="w-12 h-12 rounded object-cover border" />
-      {% endif %}
-      <div>
-        <div class="font-semibold">{{ active.name }}</div>
-        <div class="text-sm text-gray-600">{{ active.address }}</div>
-      </div>
+{% for block in hs_blocks %}
+<div class="bg-white p-4 rounded-xl shadow-sm border mb-4">
+  <h2 class="text-xl font-semibold mb-2">{{ block.homestay.name }}</h2>
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+    <div class="p-3 rounded border bg-gray-50">
+      <div class="text-xs text-gray-600">Total Nights</div>
+      <div class="text-2xl font-semibold">{{ block.stats.nights }}</div>
     </div>
-    {% set active_block = (hs_blocks | selectattr('homestay', 'equalto', active) | list) %}
-    {% set s = (active_block[0].stats if active_block and active_block[0] else None) %}
-    <div class="grid grid-cols-5 gap-6 text-center">
-      <div>
-        <div class="text-2xl font-semibold">{{ s.nights if s else 0 }}</div>
-        <div class="text-xs text-gray-500">Nights</div>
-      </div>
-      <div>
-        <div class="text-2xl font-semibold">{{ s.bookings if s else 0 }}</div>
-        <div class="text-xs text-gray-500">Bookings</div>
-      </div>
-      <div>
-        <div class="text-2xl font-semibold">{{ s.checkins_today if s else 0 }}</div>
-        <div class="text-xs text-gray-500">Check-ins Today</div>
-      </div>
-      <div>
-        <div class="text-2xl font-semibold">{{ s.checkouts_today if s else 0 }}</div>
-        <div class="text-xs text-gray-500">Check-outs Today</div>
-      </div>
-      <div>
-        <div class="text-2xl font-semibold">฿{{ '{:,.2f}'.format(s.profit|float) if s else '0.00' }}</div>
-        <div class="text-xs text-gray-500">Profit</div>
-      </div>
+    <div class="p-3 rounded border bg-gray-50">
+      <div class="text-xs text-gray-600">Total Bookings</div>
+      <div class="text-2xl font-semibold">{{ block.stats.bookings }}</div>
     </div>
-  </div>
-
-  {# Upcoming Check-ins list #}
-  <div class="mt-4">
-    <h3 class="font-medium mb-2">Upcoming Check-ins</h3>
-    {% if upcoming_checkins %}
-    <ul class="divide-y text-sm">
-      {% for b in upcoming_checkins %}
-      <li class="py-2 flex items-center justify-between">
-        <div>
-          <div class="font-medium">{{ b.guest_name }}</div>
-          <div class="text-gray-600">Room: {{ rooms_map[b.room_id].name if rooms_map.get(b.room_id) else 'Room #' ~ b.room_id }}</div>
-          <div class="text-xs text-gray-500">Check-in: {{ b.start_date.isoformat() }} · Check-out: {{ b.end_date.isoformat() }}</div>
-        </div>
-        <a href="/app/bookings/{{ b.id }}/edit" class="text-blue-600 text-sm">Manage</a>
-      </li>
-      {% endfor %}
-    </ul>
-    {% else %}
-      <p class="text-sm text-gray-600">No upcoming check-ins.</p>
-    {% endif %}
+    <div class="p-3 rounded border bg-gray-50">
+      <div class="text-xs text-gray-600">Total Revenue</div>
+      <div class="text-2xl font-semibold">{{ user.currency|currency_symbol }}{{ '%.2f'|format(block.stats.profit) }}</div>
+    </div>
+    <div class="p-3 rounded border bg-gray-50">
+      <div class="text-xs text-gray-600">Rooms</div>
+      <div class="text-2xl font-semibold">{{ block.stats.rooms_count }}</div>
+    </div>
   </div>
 </div>
-{% endif %}
+{% endfor %}
 
-<div class="grid lg:grid-cols-2 gap-6">
-  <div class="bg-white p-4 rounded shadow">
-    <h2 class="font-medium mb-2">Your Properties</h2>
-    {% if owned %}
-      <table class="w-full text-sm">
-        <thead>
-          <tr class="text-left border-b">
-            <th class="py-2">Name</th>
-            <th class="py-2 text-center">Rooms</th>
-            <th class="py-2 text-center">Bookings</th>
-            <th class="py-2 text-center">Check-ins Today</th>
-            <th class="py-2 text-center">Check-outs Today</th>
-            <th class="py-2 text-right">Nights</th>
-            <th class="py-2 text-right">Profit</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for block in hs_blocks if block.homestay in owned %}
-          <tr class="border-b">
-            <td class="py-2">
-              <div class="font-medium">{{ block.homestay.name }}</div>
-              <div class="text-xs text-gray-500">{{ block.homestay.address }}</div>
-            </td>
-            <td class="py-2 text-center">{{ block.stats.rooms_count }}</td>
-            <td class="py-2 text-center">{{ block.stats.bookings }}</td>
-            <td class="py-2 text-center">{{ block.stats.checkins_today }}</td>
-            <td class="py-2 text-center">{{ block.stats.checkouts_today }}</td>
-            <td class="py-2 text-right">{{ block.stats.nights }}</td>
-            <td class="py-2 text-right">฿{{ '{:,.2f}'.format(block.stats.profit|float) }}</td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    {% else %}
-      <p class="text-sm text-gray-600">You don't own any properties yet.</p>
-    {% endif %}
-  </div>
-
-  <div class="bg-white p-4 rounded shadow">
-    <h2 class="font-medium mb-2">Rooms by Property</h2>
-    {% if hs_blocks %}
-      <div class="space-y-3">
-        {% for block in hs_blocks %}
-        <div>
-          <div class="font-medium mb-1">{{ block.homestay.name }}</div>
-          {% if block.rooms %}
-            <ul class="list-disc pl-5 text-sm">
-              {% for r in block.rooms %}
-                <li class="flex items-center gap-2">
-                  {% if r.image_url %}
-                    <img src="{{ r.image_url }}" alt="{{ r.name }}" class="w-6 h-6 rounded object-cover border" />
-                  {% endif %}
-                  <span>{{ r.name }} (cap {{ r.capacity }}){% if r.default_rate is not none %} — ฿{{ '{:,.2f}'.format(r.default_rate|float) }}{% endif %}</span>
-                </li>
-              {% endfor %}
-            </ul>
-          {% else %}
-            <div class="text-sm text-gray-500">No rooms</div>
-          {% endif %}
-        </div>
+<div class="bg-white p-4 rounded-xl shadow-sm border mb-4">
+  <h2 class="text-xl font-semibold mb-2">All Bookings in Period</h2>
+  <div class="overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="text-left border-b bg-gray-50">
+          <th class="py-2 px-2">Guest</th>
+          <th class="py-2 px-2">Room</th>
+          <th class="py-2 px-2">Dates</th>
+          <th class="py-2 px-2">Status</th>
+          <th class="py-2 px-2 text-right">Price</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y">
+        {% for b in all_bookings %}
+        <tr>
+          <td class="py-2 px-2">{{ b.guest_name }}</td>
+          <td class="py-2 px-2">{{ rooms_map[b.room_id].name if rooms_map.get(b.room_id) else '-' }}</td>
+          <td class="py-2 px-2">{{ b.start_date.isoformat() }} → {{ b.end_date.isoformat() }}</td>
+          <td class="py-2 px-2">{{ b.status.value.replace('_',' ').title() }}</td>
+          <td class="py-2 px-2 text-right">{{ user.currency|currency_symbol }}{{ '%.2f'|format(b.price) if b.price is not none else '-' }}</td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="5" class="py-4 text-center text-gray-500">No bookings in this period.</td>
+        </tr>
         {% endfor %}
-      </div>
-    {% else %}
-      <p class="text-sm text-gray-600">No rooms to display.</p>
-    {% endif %}
+      </tbody>
+    </table>
   </div>
-</div>
-
-<div class="bg-white p-4 rounded shadow mt-6">
-  <h2 class="font-medium mb-2">All Related Bookings (Recent)</h2>
-  {% if all_bookings %}
-  <table class="w-full text-sm">
-    <thead>
-      <tr class="text-left border-b">
-        <th class="py-2">Guest</th>
-        <th class="py-2">Dates</th>
-        <th class="py-2 text-right">Price</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for b in all_bookings[:50] %}
-      <tr class="border-b">
-        <td class="py-2">{{ b.guest_name }}<div class="text-xs text-gray-500">{{ b.guest_contact }}</div></td>
-        <td class="py-2">{{ b.start_date.isoformat() }} → {{ b.end_date.isoformat() }}</td>
-        <td class="py-2 text-right">{% if b.price is not none %}฿{{ '{:,.2f}'.format(b.price|float) }}{% else %}-{% endif %}</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-  {% else %}
-    <p class="text-sm text-gray-600">No bookings yet.</p>
-  {% endif %}
 </div>
 
 {% endblock %}

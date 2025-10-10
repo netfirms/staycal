@@ -11,6 +11,29 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.css" rel="stylesheet" />
   <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
+    <script type="module">
+        // Import the functions you need from the SDKs you need
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
+        import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-analytics.js";
+        // TODO: Add SDKs for Firebase products that you want to use
+        // https://firebase.google.com/docs/web/setup#available-libraries
+
+        // Your web app's Firebase configuration
+        // For Firebase JS SDK v7.20.0 and later, measurementId is optional
+        const firebaseConfig = {
+          apiKey: "AIzaSyAc9S8IGA_K1YI28ZbVeuX-96cp-JbtGUI",
+          authDomain: "gostaypro.firebaseapp.com",
+          projectId: "gostaypro",
+          storageBucket: "gostaypro.firebasestorage.app",
+          messagingSenderId: "161275293391",
+          appId: "1:161275293391:web:a28411efb3dfad3bfdd1ba",
+          measurementId: "G-55Q2D5GLJR"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const analytics = getAnalytics(app);
+    </script>
 </head>
 <body class="bg-gray-50 text-gray-900">
   <nav class="bg-white/90 backdrop-blur border-b px-4 md:px-6 py-3 sticky top-0 z-40">

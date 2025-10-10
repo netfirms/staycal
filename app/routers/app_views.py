@@ -1,6 +1,6 @@
 from datetime import date, timedelta
 from fastapi import APIRouter, Depends, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from sqlalchemy import func
@@ -9,6 +9,7 @@ from ..models import User, Homestay, Room, Booking, BookingStatus
 from ..security import get_current_user_id
 from ..services.auto_checkout import run_auto_checkout
 from ..templating import templates
+from ..services import reporting
 
 router = APIRouter(tags=["app"])
 
@@ -245,4 +246,74 @@ def overview(request: Request, db: Session = Depends(get_db), start: str | None 
             "upcoming_checkins": upcoming_checkins,
             "rooms_map": rooms_map,
         },
+    )
+
+# --- Report Downloads ---
+
+def _get_overview_data(db: Session, user: User, start: str | None, end: str | None) -> tuple[list[Booking], dict, date, date]:
+    # This helper function re-uses the data fetching logic from the overview page.
+    period_start, period_end = None, None
+    try:
+        if start:
+            period_start = date.fromisoformat(start)
+        if end:
+            period_end = date.fromisoformat(end)
+    except ValueError:
+        period_start, period_end = None, None
+
+    if period_start is None and period_end is None:
+        today_ = date.today()
+        first_of_month = date(today_.year, today_.month, 1)
+        if today_.month == 12:
+            first_of_next = date(today_.year + 1, 1, 1)
+        else:
+            first_of_next = date(today_.year, today_.month + 1, 1)
+        period_start, period_end = first_of_month, first_of_next
+
+    # Fetch all bookings for the user within the period
+    all_user_homestays = db.query(Homestay).filter(Homestay.owner_id == user.id).all()
+    all_user_room_ids = [r.id for hs in all_user_homestays for r in hs.rooms]
+    rooms_map = {r.id: r for hs in all_user_homestays for r in hs.rooms}
+
+    q = db.query(Booking).filter(Booking.room_id.in_(all_user_room_ids))
+    if period_start and period_end:
+        q = q.filter(Booking.start_date < period_end, Booking.end_date > period_start)
+    elif period_start:
+        q = q.filter(Booking.end_date > period_start)
+    elif period_end:
+        q = q.filter(Booking.start_date < period_end)
+    
+    bookings = q.order_by(Booking.start_date.asc()).all()
+    return bookings, rooms_map, period_start, period_end
+
+@router.get("/app/overview/download/csv")
+def download_csv_report(request: Request, db: Session = Depends(get_db), start: str | None = None, end: str | None = None):
+    uid = get_current_user_id(request)
+    if not uid:
+        return Response(status_code=401)
+    user = db.query(User).get(uid)
+
+    bookings, rooms_map, _, _ = _get_overview_data(db, user, start, end)
+    csv_data = reporting.generate_csv_report(bookings, rooms_map)
+
+    return Response(
+        content=csv_data,
+        media_type="text/csv",
+        headers={"Content-Disposition": f"attachment; filename=booking_report_{date.today().isoformat()}.csv"}
+    )
+
+@router.get("/app/overview/download/pdf")
+def download_pdf_report(request: Request, db: Session = Depends(get_db), start: str | None = None, end: str | None = None):
+    uid = get_current_user_id(request)
+    if not uid:
+        return Response(status_code=401)
+    user = db.query(User).get(uid)
+
+    bookings, rooms_map, period_start, period_end = _get_overview_data(db, user, start, end)
+    pdf_bytes = reporting.generate_pdf_report(bookings, rooms_map, user, period_start, period_end)
+
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename=booking_report_{date.today().isoformat()}.pdf"}
     )
