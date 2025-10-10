@@ -1,6 +1,6 @@
 from datetime import date, timedelta
 from fastapi import APIRouter, Depends, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from sqlalchemy import func
@@ -9,6 +9,7 @@ from ..models import User, Homestay, Room, Booking, BookingStatus
 from ..security import get_current_user_id
 from ..services.auto_checkout import run_auto_checkout
 from ..templating import templates
+from ..services import reporting
 
 router = APIRouter(tags=["app"])
 
@@ -57,8 +58,8 @@ def dashboard(request: Request, db: Session = Depends(get_db)):
 
             # Occupancy, ADR, RevPAR
             total_room_nights_in_month = rooms_count * days_in_month
-            booked_nights_in_month = db.query(func.sum(Booking.end_date - Booking.start_date)).filter(Booking.room_id.in_(room_ids), Booking.start_date >= month_start, Booking.start_date < (month_start + timedelta(days=days_in_month)), Booking.status.in_([BookingStatus.CONFIRMED.value, BookingStatus.CHECKED_IN.value])).scalar() or 0
-            booked_nights_in_month = booked_nights_in_month.days if booked_nights_in_month else 0
+            booked_nights_result = db.query(func.sum(Booking.end_date - Booking.start_date)).filter(Booking.room_id.in_(room_ids), Booking.start_date >= month_start, Booking.start_date < (month_start + timedelta(days=days_in_month)), Booking.status.in_([BookingStatus.CONFIRMED.value, BookingStatus.CHECKED_IN.value])).scalar()
+            booked_nights_in_month = booked_nights_result.days if booked_nights_result else 0
 
             analytics["occupancy_rate"] = (booked_nights_in_month / total_room_nights_in_month) * 100 if total_room_nights_in_month > 0 else 0
             analytics["adr"] = analytics["monthly_revenue"] / booked_nights_in_month if booked_nights_in_month > 0 else 0
