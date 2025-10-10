@@ -6,7 +6,7 @@ from datetime import datetime, date, timedelta
 import os
 from ..db import get_db
 from ..models import User, Homestay, Subscription, SubscriptionStatus, Room, Booking, BookingStatus, UserRole, Plan
-from ..security import get_current_user_id, hash_password
+from ..security import get_current_user_id, hash_password, verify_password
 from ..config import settings
 from ..services.media import _ensure_cloudinary_configured
 from ..templating import templates
@@ -174,12 +174,51 @@ def admin_dashboard(request: Request, db: Session = Depends(get_db), admin_user:
         },
     )
 
+@router.get("/settings", response_class=HTMLResponse)
+def admin_settings_page(request: Request, admin_user: User = Depends(require_admin)):
+    return templates.TemplateResponse(
+        "admin/settings.html",
+        {
+            "request": request,
+            "user": admin_user,
+            "available_currencies": CURRENCY_SYMBOLS.keys(),
+        },
+    )
+
 @router.post("/settings/currency")
 def admin_save_currency(request: Request, db: Session = Depends(get_db), admin_user: User = Depends(require_admin), currency: str = Form(...)):
     if currency in CURRENCY_SYMBOLS:
         admin_user.currency = currency
         db.commit()
-    return RedirectResponse(url="/admin", status_code=303)
+    return RedirectResponse(url="/admin/settings", status_code=303)
+
+@router.post("/settings/password")
+def admin_change_password(request: Request, db: Session = Depends(get_db), admin_user: User = Depends(require_admin), current_password: str = Form(...), new_password: str = Form(...), confirm_password: str = Form(...)):
+    if not verify_password(current_password, admin_user.hashed_password):
+        return templates.TemplateResponse("admin/settings.html", {
+            "request": request, 
+            "user": admin_user, 
+            "available_currencies": CURRENCY_SYMBOLS.keys(),
+            "error": "Incorrect current password."
+        })
+    
+    if new_password != confirm_password:
+        return templates.TemplateResponse("admin/settings.html", {
+            "request": request, 
+            "user": admin_user, 
+            "available_currencies": CURRENCY_SYMBOLS.keys(),
+            "error": "New passwords do not match."
+        })
+    
+    admin_user.hashed_password = hash_password(new_password)
+    db.commit()
+    
+    return templates.TemplateResponse("admin/settings.html", {
+        "request": request, 
+        "user": admin_user, 
+        "available_currencies": CURRENCY_SYMBOLS.keys(),
+        "message": "Password updated successfully."
+    })
 
 @router.get("/users", response_class=HTMLResponse)
 def admin_users(request: Request, db: Session = Depends(get_db), admin_user: User = Depends(require_admin)):
@@ -216,6 +255,13 @@ def admin_user_edit(request: Request, user_id: int, db: Session = Depends(get_db
     user = db.query(User).get(user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
+
+    # Check for email conflict
+    if email != user.email:
+        existing_user = db.query(User).filter(User.email == email).first()
+        if existing_user:
+            roles_list = [UserRole.ADMIN, UserRole.OWNER, UserRole.STAFF]
+            return templates.TemplateResponse("admin/user_form.html", {"request": request, "roles": roles_list, "user": user, "error": "Email already in use by another account."})
 
     user.email = email
     user.role = role

@@ -29,6 +29,6 @@ class User(Base):
     homestay: Mapped[Optional["Homestay"]] = relationship(back_populates="users", foreign_keys=[homestay_id])
 
     # Owner relationship: a user may own one or more homestays via homestays.owner_id -> users.id
-    homestays_owned: Mapped[list["Homestay"]] = relationship(back_populates="owner", foreign_keys="Homestay.owner_id")
+    homestays_owned: Mapped[list["Homestay"]] = relationship(back_populates="owner", foreign_keys="Homestay.owner_id", cascade="all, delete-orphan")
 
     subscriptions: Mapped[list["Subscription"]] = relationship(back_populates="owner", cascade="all, delete-orphan")

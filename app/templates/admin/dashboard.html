@@ -1,65 +1,40 @@
 {% extends 'base.html' %}
 {% block content %}
 <div class="mb-4 flex items-center justify-between">
-  <h1 class="text-2xl font-semibold">Admin</h1>
+  <h1 class="text-2xl font-semibold">Admin Dashboard</h1>
   <div class="flex gap-2">
     <a href="/admin/users" class="px-3 py-2 border rounded bg-white hover:bg-gray-50">Manage Users</a>
     <a href="/admin/plans" class="px-3 py-2 border rounded bg-white hover:bg-gray-50">Assign Subscriptions</a>
     <a href="/admin/plans/manage" class="px-3 py-2 border rounded bg-white hover:bg-gray-50">Manage Plans</a>
-    <a href="/admin/cloudinary" class="px-3 py-2 border rounded bg-white hover:bg-gray-50">Cloudinary Settings</a>
+    <a href="/admin/settings" class="px-3 py-2 border rounded bg-white hover:bg-gray-50">Admin Settings</a>
   </div>
-</div>
-
-<div class="bg-white p-4 rounded-xl shadow-sm border mb-4">
-    <h2 class="font-medium mb-2">Currency Settings</h2>
-    <form method="post" action="/admin/settings/currency" class="flex items-center gap-3">
-        <div>
-            <label for="currency" class="block text-sm text-gray-600">Display Currency</label>
-            <select id="currency" name="currency" class="border rounded p-2">
-                {% for code in available_currencies %}
-                    <option value="{{ code }}" {% if user.currency == code %}selected{% endif %}>{{ code }}</option>
-                {% endfor %}
-            </select>
-        </div>
-        <div class="mt-5">
-            <button class="px-4 py-2 bg-blue-600 text-white rounded">Save</button>
-        </div>
-    </form>
 </div>
 
 {% if analytics %}
-<div class="grid md:grid-cols-3 lg:grid-cols-6 gap-3 mb-4">
-  <div class="bg-white p-3 rounded-xl border shadow-sm">
-    <div class="text-xs text-gray-500">Users</div>
-    <div class="text-xl font-semibold">{{ analytics.users_count }}</div>
-  </div>
-  <div class="bg-white p-3 rounded-xl border shadow-sm">
-    <div class="text-xs text-gray-500">Properties</div>
-    <div class="text-xl font-semibold">{{ analytics.homestays_count }}</div>
-  </div>
-  <div class="bg-white p-3 rounded-xl border shadow-sm">
-    <div class="text-xs text-gray-500">Rooms</div>
-    <div class="text-xl font-semibold">{{ analytics.rooms_count }}</div>
-  </div>
-  <div class="bg-white p-3 rounded-xl border shadow-sm">
-    <div class="text-xs text-gray-500">Bookings</div>
-    <div class="text-xl font-semibold">{{ analytics.bookings_count }}</div>
-  </div>
-  <div class="bg-white p-3 rounded-xl border shadow-sm">
-    <div class="text-xs text-gray-500">Check-ins Today</div>
-    <div class="text-xl font-semibold">{{ analytics.checkins_today }}</div>
-  </div>
-  <div class="bg-white p-3 rounded-xl border shadow-sm">
-    <div class="text-xs text-gray-500">Check-outs Today</div>
-    <div class="text-xl font-semibold">{{ analytics.checkouts_today }}</div>
-  </div>
+<div class="grid md:grid-cols-3 lg:grid-cols-4 gap-4 mb-6">
+    <div class="bg-white p-4 rounded-xl border shadow-sm">
+        <h3 class="text-sm font-medium text-gray-500">Total Users</h3>
+        <p class="text-3xl font-semibold text-gray-800">{{ analytics.users_count }}</p>
+    </div>
+    <div class="bg-white p-4 rounded-xl border shadow-sm">
+        <h3 class="text-sm font-medium text-gray-500">Total Properties</h3>
+        <p class="text-3xl font-semibold text-gray-800">{{ analytics.homestays_count }}</p>
+    </div>
+    <div class="bg-white p-4 rounded-xl border shadow-sm">
+        <h3 class="text-sm font-medium text-gray-500">Total Rooms</h3>
+        <p class="text-3xl font-semibold text-gray-800">{{ analytics.rooms_count }}</p>
+    </div>
+    <div class="bg-white p-4 rounded-xl border shadow-sm">
+        <h3 class="text-sm font-medium text-gray-500">Total Bookings</h3>
+        <p class="text-3xl font-semibold text-gray-800">{{ analytics.bookings_count }}</p>
+    </div>
 </div>
 
-<div class="grid lg:grid-cols-3 gap-4 mb-6">
+<div class="grid lg:grid-cols-3 gap-6 mb-6">
   <div class="bg-white p-4 rounded-xl shadow-sm border">
     <h2 class="font-medium mb-1">This Month (All Users)</h2>
-    <div class="text-sm text-gray-500 mb-3">From {{ analytics.month_start }} to now</div>
-    <div class="grid grid-cols-2 gap-3">
+    <div class="text-sm text-gray-500 mb-3">From {{ analytics.month_start.strftime('%B %d, %Y') }}</div>
+    <div class="grid grid-cols-2 gap-4">
       <div class="p-3 rounded border bg-gray-50">
         <div class="text-xs text-gray-600">Bookings</div>
         <div class="text-lg font-semibold">{{ analytics.monthly_bookings }}</div>
@@ -72,15 +47,12 @@
   </div>
 
   <div class="bg-white p-4 rounded-xl shadow-sm border">
-    <h2 class="font-medium mb-2">Booking Status</h2>
-    <ul class="text-sm divide-y">
-      {% for key, val in analytics.status_counts.items() %}
-      <li class="py-1 flex items-center justify-between">
-        <div class="capitalize">{{ key.replace('_',' ') }}</div>
-        <div class="font-medium">{{ val }}</div>
-      </li>
-      {% endfor %}
-    </ul>
+      <h2 class="font-medium mb-2">Key Metrics (This Month)</h2>
+      <ul class="text-sm space-y-2">
+          <li class="flex justify-between items-center"><span>Occupancy Rate</span><span class="font-semibold">{{ '%.2f'|format(analytics.occupancy_rate) }}%</span></li>
+          <li class="flex justify-between items-center"><span>Avg. Daily Rate (ADR)</span><span class="font-semibold">{{ user.currency|currency_symbol }}{{ '%.2f'|format(analytics.adr) }}</span></li>
+          <li class="flex justify-between items-center"><span>Revenue Per Room (RevPAR)</span><span class="font-semibold">{{ user.currency|currency_symbol }}{{ '%.2f'|format(analytics.revpar) }}</span></li>
+      </ul>
   </div>
 
   <div class="bg-white p-4 rounded-xl shadow-sm border">
@@ -124,105 +96,5 @@
         </table>
     </div>
 </div>
-
-<div class="grid md:grid-cols-2 gap-4 mb-6">
-  <div class="bg-white p-4 rounded-xl shadow-sm border">
-    <h2 class="font-medium mb-2">Recent Signups</h2>
-    <ul class="text-sm divide-y">
-      {% for u in analytics.recent_users %}
-      <li class="py-2 flex items-center justify-between">
-        <div>{{ u.email }}</div>
-        <div class="text-xs text-gray-500">{{ u.created_at.strftime('%Y-%m-%d %H:%M') }}</div>
-      </li>
-      {% else %}
-      <li class="py-2 text-gray-500">No users.</li>
-      {% endfor %}
-    </ul>
-  </div>
-  <div class="bg-white p-4 rounded-xl shadow-sm border">
-    <h2 class="font-medium mb-2">Recent Bookings</h2>
-    <ul class="text-sm divide-y">
-      {% for b in analytics.recent_bookings %}
-      <li class="py-2 flex items-center justify-between">
-        <div>
-          <div class="font-medium">{{ b.guest_name }}</div>
-          <div class="text-xs text-gray-500">{{ b.start_date }} → {{ b.end_date }} (status: {{ b.status.value.replace('_',' ').title() }})</div>
-        </div>
-        <div class="text-xs text-gray-700">{% if b.price is not none %}{{ user.currency|currency_symbol }}{{ '%.2f'|format(b.price|float) }}{% else %}-{% endif %}</div>
-      </li>
-      {% else %}
-      <li class="py-2 text-gray-500">No bookings.</li>
-      {% endfor %}
-    </ul>
-  </div>
-</div>
 {% endif %}
-
-<div class="bg-white p-4 rounded-xl shadow-sm border mb-6">
-  <div class="flex items-center justify-between mb-2">
-    <h2 class="font-medium">Plans & Subscriptions</h2>
-    <a href="/admin/plans" class="text-sm text-blue-700 hover:underline">Open full Plans page</a>
-  </div>
-  <div class="overflow-x-auto">
-    <table class="w-full text-sm">
-      <thead>
-        <tr class="text-left border-b bg-gray-50">
-          <th class="py-2 px-2">User</th>
-          <th class="py-2 px-2">Plan</th>
-          <th class="py-2 px-2">Status</th>
-          <th class="py-2 px-2">Expires</th>
-          <th class="py-2 px-2"></th>
-        </tr>
-      </thead>
-      <tbody class="divide-y">
-        {% for u in users %}
-        {% set sub = subs_map.get(u.id) %}
-        <tr>
-          <td class="py-2 px-2">
-            <div class="font-medium">{{ u.email }}</div>
-            <div class="text-xs text-gray-500">id: {{ u.id }} · role: {{ u.role }}</div>
-          </td>
-          <td class="py-2 px-2">{{ sub.plan.name if sub and sub.plan else '-' }}</td>
-          <td class="py-2 px-2">{{ sub.status.value if sub else '-' }}</td>
-          <td class="py-2 px-2">{{ sub.expires_at.date().isoformat() if sub and sub.expires_at else '-' }}</td>
-          <td class="py-2 px-2 text-right">
-            <details class="inline-block">
-              <summary class="cursor-pointer px-3 py-1.5 border rounded bg-white hover:bg-gray-50">Edit</summary>
-              <div class="mt-2 p-3 border rounded bg-gray-50">
-                <form method="post" action="/admin/plans/save" class="grid md:grid-cols-4 gap-2 items-end">
-                  <input type="hidden" name="owner_id" value="{{ u.id }}" />
-                  <input type="hidden" name="return_to" value="/admin" />
-                  <div>
-                    <label class="block text-xs text-gray-600">Plan</label>
-                    <select name="plan_id" class="border rounded p-1">
-                      {% for p in plans %}
-                        <option value="{{ p.id }}" {% if sub and sub.plan_id == p.id %}selected{% endif %}>{{ p.name }}</option>
-                      {% endfor %}
-                    </select>
-                  </div>
-                  <div>
-                    <label class="block text-xs text-gray-600">Status</label>
-                    <select name="status" class="border rounded p-1">
-                      {% for s in SubscriptionStatus %}
-                        <option value="{{ s.value }}" {% if sub and sub.status == s %}selected{% endif %}>{{ s.value }}</option>
-                      {% endfor %}
-                    </select>
-                  </div>
-                  <div>
-                    <label class="block text-xs text-gray-600">Expires At</label>
-                    <input type="date" name="expires_at" class="border rounded p-1" value="{{ sub.expires_at.date().isoformat() if sub and sub.expires_at else '' }}" />
-                  </div>
-                  <div class="text-right">
-                    <button class="px-3 py-2 bg-blue-600 text-white rounded">Save</button>
-                  </div>
-                </form>
-              </div>
-            </details>
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-</div>
 {% endblock %}

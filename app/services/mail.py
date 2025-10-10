@@ -1,37 +1,19 @@
 import logging
 import datetime
-from fastapi_mail import FastMail, MessageSchema, ConnectionConfig
+import requests
 from fastapi.templating import Jinja2Templates
 from ..config import settings
 
 logger = logging.getLogger(__name__)
 
-# Conditionally configure mail settings
-mail_conf = {
-    "MAIL_USERNAME": settings.MAIL_USERNAME,
-    "MAIL_PASSWORD": settings.MAIL_PASSWORD,
-    "MAIL_FROM": settings.MAIL_FROM,
-    "MAIL_PORT": settings.MAIL_PORT,
-    "MAIL_SERVER": settings.MAIL_SERVER,
-    "USE_CREDENTIALS": True,
-    "VALIDATE_CERTS": True
-}
-
-if settings.MAIL_SSL_TLS:
-    mail_conf["MAIL_SSL_TLS"] = True
-    mail_conf["MAIL_STARTTLS"] = False
-else:
-    mail_conf["MAIL_SSL_TLS"] = False
-    mail_conf["MAIL_STARTTLS"] = True
-
-# Create a reusable FastMail instance
-fm = FastMail(ConnectionConfig(**mail_conf))
-
 # Initialize Jinja2 templates
 templates = Jinja2Templates(directory="app/templates")
 
-async def send_verification_email(email: str, token: str):
-    """Sends a verification email to a new user using a Jinja2 template."""
+def send_verification_email(email: str, token: str):
+    """Sends a verification email to a new user using the Mailgun API."""
+    if not settings.MAILGUN_API_KEY or not settings.MAILGUN_DOMAIN:
+        logger.warning("Mailgun API key or domain not configured. Skipping email.")
+        return
 
     verification_url = f"{settings.BASE_URL}/auth/verify?token={token}"
     
@@ -40,15 +22,18 @@ async def send_verification_email(email: str, token: str):
         "current_year": datetime.datetime.now().year
     })
 
-    message = MessageSchema(
-        subject="Verify Your Email Address for GoStayPro",
-        recipients=[email],
-        body=template_body,
-        subtype="html"
-    )
+    mailgun_url = f"https://api.mailgun.net/v3/{settings.MAILGUN_DOMAIN}/messages"
+    auth = ("api", settings.MAILGUN_API_KEY)
+    data = {
+        "from": f"GoStayPro <{settings.MAIL_FROM}>",
+        "to": [email],
+        "subject": "Verify Your Email Address for GoStayPro",
+        "html": template_body,
+    }
 
     try:
-        await fm.send_message(message)
-        logger.info(f"Verification email sent to {email}")
-    except Exception as e:
-        logger.error(f"Failed to send verification email to {email}: {e}")
+        response = requests.post(mailgun_url, auth=auth, data=data, timeout=10)
+        response.raise_for_status()  # Raise an exception for bad status codes (4xx or 5xx)
+        logger.info(f"Verification email sent to {email} via Mailgun.")
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Failed to send verification email to {email} via Mailgun: {e}")

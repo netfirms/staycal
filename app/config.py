@@ -24,14 +24,10 @@ class Settings:
     ADMIN_EMAIL: str = os.getenv("ADMIN_EMAIL", "admin@staycal.local")
     ADMIN_PASSWORD: str = os.getenv("ADMIN_PASSWORD", "admin12345")
     
-    # Mail Settings
-    MAIL_SERVER: str = os.getenv("MAIL_SERVER", "smtp.mailtrap.io")
-    MAIL_PORT: int = int(os.getenv("MAIL_PORT", "2525"))
-    MAIL_USERNAME: str = os.getenv("MAIL_USERNAME", "")
-    MAIL_PASSWORD: str = os.getenv("MAIL_PASSWORD", "")
+    # Mail Settings (Mailgun)
     MAIL_FROM: str = os.getenv("MAIL_FROM", "noreply@gostay.pro")
-    MAIL_STARTTLS: bool = os.getenv("MAIL_STARTTLS", "true").lower() == "true"
-    MAIL_SSL_TLS: bool = os.getenv("MAIL_SSL_TLS", "false").lower() == "true"
+    MAILGUN_API_KEY: str = os.getenv("MAILGUN_API_KEY", "")
+    MAILGUN_DOMAIN: str = os.getenv("MAILGUN_DOMAIN", "")
 
     # Firebase (for client-side analytics)
     FIREBASE_API_KEY: str = os.getenv("FIREBASE_API_KEY", "")
