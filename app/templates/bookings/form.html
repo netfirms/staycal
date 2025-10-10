@@ -1,65 +1,59 @@
-{% extends 'base.html' %}
+{% extends "base.html" %}
+
+{% block title %}{{ "Edit Booking" if mode == 'edit' else "New Booking" }}{% endblock %}
+
 {% block content %}
-<h1 class="text-2xl font-semibold mb-4">{{ 'New' if mode == 'new' else 'Edit' }} Booking</h1>
-<div class="bg-white p-4 rounded-xl shadow-sm border max-w-2xl">
-  <form method="post" action="{{ '/app/bookings/new' if mode == 'new' else '/app/bookings/' ~ booking.id ~ '/edit' }}" class="grid md:grid-cols-2 gap-4" enctype="multipart/form-data">
-    <div>
-      <label class="block text-sm font-medium">Room</label>
-      <select name="room_id" class="border rounded w-full p-2 focus:outline-none focus:ring-2 focus:ring-blue-500" required>
-        {% for r in rooms %}
-          {% set sel = '' %}
-          {% if booking and booking.room_id == r.id %}
-            {% set sel = 'selected' %}
-          {% elif selected_room_id and selected_room_id == r.id %}
-            {% set sel = 'selected' %}
-          {% endif %}
-          <option value="{{ r.id }}" {{ sel }}>{{ r.name }}</option>
-        {% endfor %}
-      </select>
-    </div>
-    <div>
-      <label class="block text-sm font-medium">Guest Name</label>
-      <input name="guest_name" class="border rounded w-full p-2 focus:outline-none focus:ring-2 focus:ring-blue-500" value="{{ booking.guest_name if booking else '' }}" required />
-    </div>
-    <div>
-      <label class="block text-sm font-medium">Guest Contact</label>
-      <input name="guest_contact" class="border rounded w-full p-2 focus:outline-none focus:ring-2 focus:ring-blue-500" value="{{ booking.guest_contact if booking else '' }}" />
-    </div>
-    <div>
-      <label class="block text-sm font-medium">Start Date</label>
-      <input type="date" name="start_date" class="border rounded w-full p-2 focus:outline-none focus:ring-2 focus:ring-blue-500" value="{{ booking.start_date.isoformat() if booking else '' }}" required />
-    </div>
-    <div>
-      <label class="block text-sm font-medium">End Date</label>
-      <input type="date" name="end_date" class="border rounded w-full p-2 focus:outline-none focus:ring-2 focus:ring-blue-500" value="{{ booking.end_date.isoformat() if booking else '' }}" required />
-    </div>
-    <div>
-      <label class="block text-sm font-medium">Price (THB)</label>
-      <input type="number" step="0.01" name="price" class="border rounded w-full p-2 focus:outline-none focus:ring-2 focus:ring-blue-500" value="{{ booking.price if booking else '' }}" />
-    </div>
-    <div>
-      <label class="block text-sm font-medium">Status</label>
-      <select name="status" class="border rounded w-full p-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
-        {% for st in BookingStatus %}
-          <option value="{{ st.value }}">{{ st.value }}</option>
-        {% endfor %}
-      </select>
-    </div>
-    <div class="md:col-span-2">
-      <label class="block text-sm font-medium">Notes / Remark</label>
-      <textarea name="comment" rows="4" class="border rounded w-full p-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Any special requests, arrival time, etc.">{{ booking.comment if booking else '' }}</textarea>
-    </div>
-    <div class="md:col-span-2">
-      <label class="block text-sm font-medium">Image</label>
-      {% if booking and booking.image_url %}
-        <img src="{{ booking.image_url }}" alt="Booking image" class="h-24 w-24 object-cover rounded mb-2" />
-      {% endif %}
-      <input name="image" type="file" accept="image/*" class="border rounded w-full p-2" />
-    </div>
-    <div class="md:col-span-2 flex items-center gap-2">
-      <a href="/app/bookings/" class="px-3 py-2 border rounded">Cancel</a>
-      <button class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Save</button>
-    </div>
-  </form>
+<div class="max-w-2xl mx-auto">
+    <h1 class="text-2xl font-semibold mb-4">{{ "Edit Booking" if mode == 'edit' else "New Booking" }}</h1>
+
+    <form method="post" action="{% if mode == 'edit' %}/app/bookings/{{ booking.id }}/edit{% else %}/app/bookings/new{% endif %}" class="bg-white p-6 rounded-xl shadow-sm border space-y-4">
+        <input type="hidden" name="return_url" value="{{ request.query_params.get('return_url', '/app/bookings') }}">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+                <label for="guest_name" class="block text-sm font-medium text-gray-700">Guest Name</label>
+                <input type="text" id="guest_name" name="guest_name" value="{{ booking.guest_name if booking else '' }}" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+            </div>
+            <div>
+                <label for="guest_contact" class="block text-sm font-medium text-gray-700">Guest Contact</label>
+                <input type="text" id="guest_contact" name="guest_contact" value="{{ booking.guest_contact if booking else '' }}" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+            </div>
+            <div>
+                <label for="start_date" class="block text-sm font-medium text-gray-700">Start Date</label>
+                <input type="date" id="start_date" name="start_date" value="{{ booking.start_date.isoformat() if booking else (start_date.isoformat() if start_date else '') }}" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+            </div>
+            <div>
+                <label for="end_date" class="block text-sm font-medium text-gray-700">End Date</label>
+                <input type="date" id="end_date" name="end_date" value="{{ booking.end_date.isoformat() if booking else (end_date.isoformat() if end_date else '') }}" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+            </div>
+            <div>
+                <label for="room_id" class="block text-sm font-medium text-gray-700">Room</label>
+                <select id="room_id" name="room_id" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                    {% for room in rooms %}
+                        <option value="{{ room.id }}" {% if (booking and room.id == booking.room_id) or (selected_room_id and room.id == selected_room_id) %}selected{% endif %}>{{ room.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label for="status" class="block text-sm font-medium text-gray-700">Status</label>
+                <select id="status" name="status" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                    {% for s in BookingStatus %}
+                        <option value="{{ s.value }}" {% if booking and booking.status == s %}selected{% endif %}>{{ s.value.replace('_',' ').title() }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="md:col-span-2">
+                <label for="price" class="block text-sm font-medium text-gray-700">Price</label>
+                <input type="number" step="0.01" id="price" name="price" value="{{ booking.price if booking and booking.price is not none else '' }}" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+            </div>
+            <div class="md:col-span-2">
+                <label for="comment" class="block text-sm font-medium text-gray-700">Comment</label>
+                <textarea id="comment" name="comment" rows="3" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">{{ booking.comment if booking and booking.comment else '' }}</textarea>
+            </div>
+        </div>
+        <div class="mt-6 flex justify-end gap-3">
+            <a href="{{ request.query_params.get('return_url', '/app/bookings') }}" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">Cancel</a>
+            <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">{{ "Update Booking" if mode == 'edit' else "Create Booking" }}</button>
+        </div>
+    </form>
 </div>
 {% endblock %}

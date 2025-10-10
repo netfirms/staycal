@@ -1,0 +1,64 @@
+<div class="fixed inset-0 bg-gray-800 bg-opacity-75 flex items-center justify-center z-20" x-data="{ open: true }" x-show="open">
+  <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-lg" @click.away="open = false; setTimeout(() => document.getElementById('modal').innerHTML = '', 300)">
+    <h2 class="text-xl font-semibold mb-4">{{ "Edit Booking" if booking else "New Booking" }}</h2>
+    
+    <form>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label for="guest_name" class="block text-sm font-medium text-gray-700">Guest Name</label>
+          <input type="text" id="guest_name" name="guest_name" value="{{ booking.guest_name if booking else '' }}" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+        </div>
+        <div>
+          <label for="guest_contact" class="block text-sm font-medium text-gray-700">Guest Contact</label>
+          <input type="text" id="guest_contact" name="guest_contact" value="{{ booking.guest_contact if booking else '' }}" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+        </div>
+        <div>
+          <label for="start_date" class="block text-sm font-medium text-gray-700">Start Date</label>
+          <input type="date" id="start_date" name="start_date" value="{{ start_date.isoformat() if start_date else '' }}" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+        </div>
+        <div>
+          <label for="end_date" class="block text-sm font-medium text-gray-700">End Date</label>
+          <input type="date" id="end_date" name="end_date" value="{{ end_date.isoformat() if end_date else '' }}" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+        </div>
+        <div>
+          <label for="room_id" class="block text-sm font-medium text-gray-700">Room</label>
+          <select id="room_id" name="room_id" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+            {% for room in rooms %}
+              <option value="{{ room.id }}" {% if room.id == room_id %}selected{% endif %}>{{ room.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div>
+          <label for="status" class="block text-sm font-medium text-gray-700">Status</label>
+          <select id="status" name="status" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+            {% for s in BookingStatus %}
+              <option value="{{ s.value }}" {% if booking and booking.status == s %}selected{% endif %}>{{ s.value.replace('_',' ').title() }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="md:col-span-2">
+          <label for="price" class="block text-sm font-medium text-gray-700">Price</label>
+          <input type="number" step="0.01" id="price" name="price" value="{{ booking.price if booking and booking.price is not none else '' }}" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+        </div>
+        <div class="md:col-span-2">
+          <label for="comment" class="block text-sm font-medium text-gray-700">Comment</label>
+          <textarea id="comment" name="comment" rows="3" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">{{ booking.comment if booking and booking.comment else '' }}</textarea>
+        </div>
+      </div>
+      <div class="mt-6 flex justify-end gap-3">
+        <button type="button" @click="open = false; setTimeout(() => document.getElementById('modal').innerHTML = '', 300)" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">Cancel</button>
+        <button type="button" 
+                {% if booking %}
+                hx-post="/htmx/booking/{{ booking.id }}/edit"
+                {% else %}
+                hx-post="/htmx/booking/create"
+                {% endif %}
+                hx-include="closest form"
+                hx-trigger="click"
+                hx-target="#modal"
+                hx-swap="outerHTML"
+                class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">{{ "Update Booking" if booking else "Create Booking" }}</button>
+      </div>
+    </form>
+  </div>
+</div>

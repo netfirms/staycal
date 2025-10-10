@@ -119,7 +119,7 @@
               <div class="text-gray-600">Room: {{ rooms_map[b.room_id].name if rooms_map.get(b.room_id) else 'Room #' ~ b.room_id }}</div>
               <div class="text-xs text-gray-500">{{ b.start_date.isoformat() }} → {{ b.end_date.isoformat() }}</div>
             </div>
-            <a href="/app/bookings/{{ b.id }}/edit" class="text-blue-600 text-sm">Manage</a>
+            <a href="/app/bookings/{{ b.id }}/edit?return_url=/app" class="text-blue-600 text-sm">Manage</a>
           </li>
         {% endfor %}
       </ul>
@@ -138,7 +138,7 @@
               <div class="text-gray-600">Room: {{ rooms_map[b.room_id].name if rooms_map.get(b.room_id) else 'Room #' ~ b.room_id }}</div>
               <div class="text-xs text-gray-500">{{ b.start_date.isoformat() }} → {{ b.end_date.isoformat() }}</div>
             </div>
-            <a href="/app/bookings/{{ b.id }}/edit" class="text-blue-600 text-sm">Manage</a>
+            <a href="/app/bookings/{{ b.id }}/edit?return_url=/app" class="text-blue-600 text-sm">Manage</a>
           </li>
         {% endfor %}
       </ul>
@@ -179,7 +179,7 @@
               {% endif %}
               <div class="font-medium">{{ r.name }} <span class="text-xs text-gray-500">(cap {{ r.capacity }})</span></div>
             </div>
-            <div class="text-sm"><a href="/app/bookings/new?room_id={{ r.id }}" class="text-green-700">New Booking</a></div>
+            <div class="text-sm"><a href="/app/bookings/new?room_id={{ r.id }}&return_url=/app" class="text-green-700">New Booking</a></div>
           </summary>
           <div class="mt-3">
             <div id="cal-{{ r.id }}" class="fc-container border rounded"></div>
@@ -196,8 +196,6 @@
     </div>
   {% endif %}
 {% endif %}
-
-<div id="modal"></div>
 
 <script>
   (function(){
@@ -231,31 +229,12 @@
             .catch(err => failure(err));
         },
         select: function(info){
-          const url = `/htmx/booking/new?room_id=${roomId}&start_date=${info.startStr}&end_date=${info.endStr}`;
-          fetch(url)
-            .then(r => r.text())
-            .then(html => {
-              const m = document.getElementById('modal');
-              m.innerHTML = html;
-              try { document.body.classList.add('overflow-hidden'); } catch(_){}
-            })
-            .catch(() => {});
-          try { calendar.unselect(); } catch(_){ }
+          window.location.href = `/app/bookings/new?room_id=${roomId}&start_date=${info.startStr}&end_date=${info.endStr}&return_url=/app`;
         },
         eventClick: function(info){
           const id = info.event.id;
-          if (!id) return;
-          // Ignore OTA (external) events which are read-only (ids start with 'ota-')
-          if (String(id).startsWith('ota-')) { return; }
-          const url = `/htmx/booking/edit?booking_id=${id}`;
-          fetch(url)
-            .then(r => r.text())
-            .then(html => {
-              const m = document.getElementById('modal');
-              m.innerHTML = html;
-              try { document.body.classList.add('overflow-hidden'); } catch(_){}
-            })
-            .catch(() => {});
+          if (!id || String(id).startsWith('ota-')) return;
+          window.location.href = `/app/bookings/${id}/edit?return_url=/app`;
         }
       });
       calendar.render();
@@ -263,14 +242,6 @@
     }
 
     rooms.forEach(r => initCalendar(r.id));
-
-    function closeModalSoon(){
-      const modal = document.getElementById('modal');
-      if (modal) { setTimeout(() => { modal.innerHTML = ''; try { document.body.classList.remove('overflow-hidden'); } catch(_){} }, 300); }
-    }
-    function refreshAll(){ Object.values(calendars).forEach(c => c.refetchEvents()); }
-    document.body.addEventListener('bookingSaved', function(){ refreshAll(); closeModalSoon(); });
-    document.body.addEventListener('bookingUpdated', function(){ refreshAll(); closeModalSoon(); });
   })();
 </script>
 {% endblock %}
