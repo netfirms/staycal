@@ -1,82 +1,38 @@
-{% extends 'base.html' %}
-{% block content %}
-<h1 class="text-2xl font-semibold mb-4">Rooms</h1>
-<div class="grid md:grid-cols-2 gap-6">
-  <div class="bg-white p-4 rounded-xl shadow-sm border">
-    <h2 class="font-medium mb-2">Your Rooms</h2>
-    {% if rooms %}
-    <div class="overflow-x-auto">
-      <table class="w-full text-sm">
-        <thead>
-          <tr class="text-left border-b bg-gray-50">
-            <th class="py-2 px-2">Image</th>
-            <th class="py-2 px-2">Name</th>
-            <th class="py-2 px-2">Capacity</th>
-            <th class="py-2 px-2">Default Rate (THB)</th>
-            <th class="py-2 px-2"></th>
-          </tr>
-        </thead>
-        <tbody class="divide-y">
-          {% for r in rooms %}
-          <tr>
-            <td class="py-2 px-2">
-              {% if r.image_url %}
-                <img src="{{ r.image_url }}" alt="{{ r.name }}" class="h-12 w-12 object-cover rounded" />
-              {% else %}
-                <div class="h-12 w-12 bg-gray-100 rounded"></div>
-              {% endif %}
-            </td>
-            <td class="py-2 px-2 font-medium">{{ r.name }}</td>
-            <td class="py-2 px-2">{{ r.capacity }}</td>
-            <td class="py-2 px-2">{% if r.default_rate is not none %}฿{{ '{:,.2f}'.format(r.default_rate|float) }}{% else %}-{% endif %}</td>
-            <td class="py-2 px-2 text-right whitespace-nowrap">
-              <a href="/app/rooms/{{ r.id }}/edit" class="px-2 py-1 text-blue-700 hover:underline">Edit</a>
-              <a href="/app/bookings/new?room_id={{ r.id }}" class="px-2 py-1 text-green-700 hover:underline">New Booking</a>
-              {% if user and user.homestay_id %}
-                <a href="/public/{{ user.homestay_id }}?room_id={{ r.id }}" target="_blank" rel="noopener" class="px-2 py-1 text-gray-700 hover:underline">Public</a>
-              {% endif %}
-              <form method="post" action="/app/rooms/{{ r.id }}/delete" class="inline" onsubmit="return confirm('Delete room? Bookings will be deleted too.');">
-                <button class="px-2 py-1 text-red-700 hover:underline">Delete</button>
-              </form>
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-    {% else %}
-      <p class="text-sm text-gray-600">No rooms yet.</p>
-    {% endif %}
-  </div>
+{% extends "base.html" %}
 
-  <div class="bg-white p-4 rounded-xl shadow-sm border">
-    <h2 class="font-medium mb-2">Add Room</h2>
-    <form method="post" action="/app/rooms/" class="space-y-3" enctype="multipart/form-data">
-      <div>
-        <label class="block text-sm font-medium">Name</label>
-        <input name="name" class="border rounded w-full p-2 focus:outline-none focus:ring-2 focus:ring-blue-500" required />
-      </div>
-      <div>
-        <label class="block text-sm font-medium">Capacity</label>
-        <input name="capacity" type="number" min="1" class="border rounded w-full p-2 focus:outline-none focus:ring-2 focus:ring-blue-500" value="2" />
-      </div>
-      <div>
-        <label class="block text-sm font-medium">Default Rate (THB)</label>
-        <input name="default_rate" type="number" step="0.01" class="border rounded w-full p-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-      </div>
-      <div>
-        <label class="block text-sm font-medium">Image</label>
-        <input name="image" type="file" accept="image/*" class="border rounded w-full p-2" />
-      </div>
-      <div>
-        <label class="block text-sm font-medium">OTA iCal URL (optional)</label>
-        <input name="ota_ical_url" type="url" placeholder="https://example.com/calendar.ics" class="border rounded w-full p-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-        <p class="text-xs text-gray-500 mt-1">Paste the external calendar (ICS) URL from your OTA to display and avoid double-booking.</p>
-      </div>
-      <div>
-        <button class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Create Room</button>
-      </div>
-    </form>
-  </div>
+{% block title %}Rooms{% endblock %}
+
+{% block content %}
+<div class="flex items-center justify-between mb-4">
+    <h1 class="text-2xl font-semibold">Rooms</h1>
+    <a href="/app/rooms/new" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">Add New Room</a>
+</div>
+
+<div class="bg-white p-4 rounded-xl shadow-sm border">
+    <ul class="divide-y">
+        {% for room in rooms %}
+        <li class="py-4 flex flex-wrap items-center gap-4">
+            <div class="w-full md:w-40">
+                {% if room.image_url %}
+                <img src="{{ room.image_url }}" alt="{{ room.name }}" class="w-full h-24 rounded-lg object-cover border" />
+                {% else %}
+                <div class="w-full h-24 rounded-lg bg-gray-100 border flex items-center justify-center text-gray-400 text-sm">No Image</div>
+                {% endif %}
+            </div>
+            <div class="flex-1">
+                <div class="font-medium text-lg">{{ room.name }}</div>
+                <div class="text-sm text-gray-600">Capacity: {{ room.capacity }}</div>
+                <div class="text-sm text-gray-600">Default Rate: {{ user.currency|currency_symbol }}{{ '%.2f'|format(room.default_rate) if room.default_rate is not none else '-' }}</div>
+            </div>
+            <div class="flex items-center gap-2">
+                <a href="/app/rooms/{{ room.id }}/edit" class="text-sm text-blue-600 hover:underline">Edit</a>
+            </div>
+        </li>
+        {% else %}
+        <li class="py-4 text-center text-gray-600">
+            You haven't added any rooms yet. <a href="/app/rooms/new" class="text-blue-600 underline">Add one now</a> to start taking bookings.
+        </li>
+        {% endfor %}
+    </ul>
 </div>
 {% endblock %}
