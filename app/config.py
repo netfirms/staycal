@@ -13,6 +13,7 @@ class Settings:
     
     # Auth & Session
     SESSION_COOKIE_NAME: str = os.getenv("SESSION_COOKIE_NAME", "staycal_session")
+    SESSION_MAX_AGE_DAYS: int = int(os.getenv("SESSION_MAX_AGE_DAYS", "30"))
     
     # Database
     DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:///./staycal.db")
@@ -23,6 +24,8 @@ class Settings:
     # Default admin bootstrap
     ADMIN_EMAIL: str = os.getenv("ADMIN_EMAIL", "admin@staycal.local")
     ADMIN_PASSWORD: str = os.getenv("ADMIN_PASSWORD", "admin12345")
+    ADMIN_NOTIFICATION_EMAIL: str = os.getenv("ADMIN_NOTIFICATION_EMAIL", "")
+    ADMIN_NOTIFICATION_EMAIL_ENABLE: bool = os.getenv("ADMIN_NOTIFICATION_EMAIL_ENABLE", "false").lower() == "true"
     
     # Mail Settings (Mailgun)
     MAIL_FROM: str = os.getenv("MAIL_FROM", "noreply@gostay.pro")

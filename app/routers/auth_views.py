@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, Form, Request, Response, BackgroundTasks
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy.orm import Session
 from ..db import get_db
-from ..models import User, Plan, Subscription
+from ..models import User, Plan, Subscription, UserRole
 from ..security import hash_password, verify_password, set_session, clear_session
 from ..config import settings
 from ..limiter import limiter
@@ -136,14 +136,20 @@ async def register(request: Request, background_tasks: BackgroundTasks, email: s
     return templates.TemplateResponse("auth/verify_email.html", {"request": request, "email": email})
 
 @router.get("/verify")
-async def verify_email(token: str, db: Session = Depends(get_db)):
+async def verify_email(request: Request, token: str, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.verification_token == token).first()
     if not user:
         return RedirectResponse(url="/auth/login?error=Invalid+verification+token.", status_code=303)
 
-    user.is_verified = True
-    user.verification_token = None
-    db.commit()
+    if not user.is_verified:
+        user.is_verified = True
+        user.verification_token = None
+        db.commit()
+
+        # Check if admin notifications are enabled globally
+        if settings.ADMIN_NOTIFICATION_EMAIL_ENABLE and settings.ADMIN_NOTIFICATION_EMAIL:
+            from ..services.mail import send_new_user_admin_notification
+            background_tasks.add_task(send_new_user_admin_notification, user.email)
 
     redirect = RedirectResponse(url="/app?msg=Email+verified+successfully!", status_code=303)
     set_session(redirect, user.id)
