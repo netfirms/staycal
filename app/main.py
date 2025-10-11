@@ -13,7 +13,7 @@ from .limiter import limiter
 from .models import User
 from .routers import auth_views, app_views, calendar_htmx_views, admin_views, public_views
 from .routers import rooms_views, bookings_views, homestays_views
-from .routers import settings_views
+from .routers import settings_views, ui_components
 from .security import hash_password
 from .templating import templates
 
@@ -92,6 +92,7 @@ app.include_router(rooms_views.router)
 app.include_router(bookings_views.router)
 app.include_router(homestays_views.router)
 app.include_router(settings_views.router)
+app.include_router(ui_components.router)
 
 # Mobile JSON API
 from .routers import api_mobile

@@ -10,7 +10,13 @@
         
         {% if room and room.image_url %}
         <div class="mb-4">
-            <img src="{{ room.image_url }}" alt="{{ room.name }}" class="w-full h-48 rounded-lg object-cover border" />
+            <a href="{{ room.image_url }}" 
+               hx-get="/ui/image-modal?image_url={{ room.image_url }}&alt_text={{ room.name|urlencode }}"
+               hx-target="body"
+               hx-swap="beforeend"
+               class="block cursor-pointer">
+                <img src="{{ room.image_url }}" alt="{{ room.name }}" class="w-full h-48 rounded-lg object-cover border" />
+            </a>
         </div>
         {% endif %}
 

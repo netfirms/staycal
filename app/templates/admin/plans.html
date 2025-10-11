@@ -1,7 +1,9 @@
-{% extends 'base.html' %}
-{% block content %}
-<h1 class="text-2xl font-semibold mb-4">Admin • Plans & Subscriptions</h1>
-<p class="text-sm text-gray-600 mb-4">Assign, update, or remove a user's subscription.</p>
+{% extends "admin/base.html" %}
+
+{% block admin_content %}
+<div class="flex justify-between items-center mb-6">
+    <h1 class="text-2xl font-semibold">Subscriptions Management</h1>
+</div>
 
 <div class="bg-white p-4 rounded-xl shadow-sm border">
   <div class="overflow-x-auto">
@@ -95,9 +97,5 @@
       </tbody>
     </table>
   </div>
-</div>
-
-<div class="mt-4">
-  <a href="/admin/" class="px-3 py-2 border rounded bg-white">Back to Admin</a>
 </div>
 {% endblock %}

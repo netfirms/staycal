@@ -1,0 +1,41 @@
+<div id="image-modal-wrapper" class="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50">
+  <div class="relative p-4">
+    <img src="{{ image_url }}" alt="{{ alt_text }}" class="max-w-[90vw] max-h-[90vh] rounded-lg shadow-lg">
+    <button id="image-modal-close-btn" class="absolute -top-2 -right-2 bg-white rounded-full p-1.5 text-gray-800 hover:bg-gray-200">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+    </button>
+  </div>
+  <script>
+    (function() {
+      const wrapper = document.getElementById('image-modal-wrapper');
+      const closeBtn = document.getElementById('image-modal-close-btn');
+
+      function closeModal() {
+        if (wrapper) {
+          wrapper.remove();
+        }
+        document.removeEventListener('keydown', handleEscKey);
+      }
+
+      function handleEscKey(event) {
+        if (event.key === 'Escape') {
+          closeModal();
+        }
+      }
+
+      if (wrapper) {
+        wrapper.addEventListener('click', function(event) {
+          if (event.target === wrapper) {
+            closeModal();
+          }
+        });
+      }
+
+      if (closeBtn) {
+        closeBtn.addEventListener('click', closeModal);
+      }
+
+      document.addEventListener('keydown', handleEscKey);
+    })();
+  </script>
+</div>
