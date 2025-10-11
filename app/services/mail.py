@@ -95,3 +95,33 @@ def send_password_reset_email(email: str, token: str):
         logger.info(f"Password reset email sent to {email} via Mailgun.")
     except requests.exceptions.RequestException as e:
         logger.error(f"Failed to send password reset email to {email} via Mailgun: {e}")
+
+def send_new_user_admin_notification(new_user_email: str):
+    """Sends a notification to the admin email address about a new user sign-up."""
+    if not settings.ADMIN_NOTIFICATION_EMAIL:
+        return
+    if not settings.MAILGUN_API_KEY or not settings.MAILGUN_DOMAIN:
+        logger.warning("Mailgun API key or domain not configured. Skipping admin notification.")
+        return
+
+    template_body = templates.get_template("emails/admin_new_user_notification.html").render({
+        "email": new_user_email,
+        "registration_time": datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"),
+        "current_year": datetime.datetime.now().year
+    })
+
+    mailgun_url = f"https://api.mailgun.net/v3/{settings.MAILGUN_DOMAIN}/messages"
+    auth = ("api", settings.MAILGUN_API_KEY)
+    data = {
+        "from": f"GoStayPro Admin <{settings.MAIL_FROM}>",
+        "to": [settings.ADMIN_NOTIFICATION_EMAIL],
+        "subject": "[GoStayPro] New User Sign-up",
+        "html": template_body,
+    }
+
+    try:
+        response = requests.post(mailgun_url, auth=auth, data=data, timeout=10)
+        response.raise_for_status()
+        logger.info(f"Admin notification sent for new user: {new_user_email}")
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Failed to send admin notification for new user {new_user_email}: {e}")

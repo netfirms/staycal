@@ -49,7 +49,11 @@ app = FastAPI(
 )
 
 # Add session middleware
-app.add_middleware(SessionMiddleware, secret_key=settings.SECRET_KEY)
+app.add_middleware(
+    SessionMiddleware, 
+    secret_key=settings.SECRET_KEY,
+    max_age=settings.SESSION_MAX_AGE_DAYS * 24 * 60 * 60 # days in seconds
+)
 
 @app.on_event("startup")
 def startup_event():
