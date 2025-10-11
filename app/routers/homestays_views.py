@@ -17,7 +17,7 @@ def homestays_index(request: Request, user: User = Depends(require_user), db: Se
 
 @router.get("/new", response_class=HTMLResponse)
 def homestays_new_form(request: Request, user: User = Depends(require_user)):
-    return templates.TemplateResponse("homestays/form.html", {"request": request, "user": user, "homestay": None})
+    return templates.TemplateResponse("homestays/edit.html", {"request": request, "user": user, "homestay": None})
 
 @router.post("/")
 async def homestays_create(request: Request, user: User = Depends(require_user), name: str = Form(...), address: str = Form(""), set_active: bool = Form(False), image: UploadFile | None = File(None), db: Session = Depends(get_db)):
@@ -46,7 +46,7 @@ def homestays_edit_form(request: Request, homestay_id: int, user: User = Depends
     hs = db.query(Homestay).get(homestay_id)
     if not hs or hs.owner_id != user.id:
         return HTMLResponse("<h2>Property not found or not authorized</h2>", status_code=404)
-    return templates.TemplateResponse("homestays/form.html", {"request": request, "user": user, "homestay": hs})
+    return templates.TemplateResponse("homestays/edit.html", {"request": request, "user": user, "homestay": hs})
 
 @router.post("/{homestay_id}/edit")
 async def homestays_edit(request: Request, homestay_id: int, user: User = Depends(require_user), name: str = Form(...), address: str = Form(""), image: UploadFile | None = File(None), db: Session = Depends(get_db)):

@@ -48,6 +48,9 @@ app = FastAPI(
     ],
 )
 
+# Mount static files
+app.mount("/static", StaticFiles(directory="app/static"), name="static")
+
 # Add session middleware
 app.add_middleware(
     SessionMiddleware, 
@@ -101,9 +104,6 @@ app.include_router(ui_components.router)
 # Mobile JSON API
 from .routers import api_mobile
 app.include_router(api_mobile.router)
-
-# Static (placeholder)
-app.mount("/static", StaticFiles(directory="app/static", check_dir=False), name="static")
 
 @app.get("/healthz")
 @limiter.exempt
