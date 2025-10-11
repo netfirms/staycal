@@ -1,117 +1,96 @@
-# GoStayPro — Property Room & Booking Management (Up-to-date Overview)
+# GoStayPro — Property Room & Booking Management
 
-GoStayPro is a calendar-first, multi-tenant room management and booking web application designed for small properties, guesthouses, and B&Bs. The philosophy is simplicity, affordability, and a powerful, visually-driven calendar interface. This README reflects the current implemented codebase and how to run and deploy it.
-
----
-
-## 1. Business Idea & Value Proposition
-
-- Problem: Small homestay owners often rely on cumbersome spreadsheets, paper calendars, or expensive, overly complex Property Management Systems (PMS). They need a simple, affordable, and centralized way to view room availability, manage bookings, and track guest information.
-- Solution: StayCal provides a clean, calendar-first web application that focuses on booking management. It is built for low operational costs, enabling an affordable subscription model.
-- Target Audience: Small hospitality operators (1–15 rooms): homestays, guesthouses, B&Bs, boutique inns.
-- Monetization: Tiered monthly/annual subscriptions:
-  - Free: 1 user, up to 2 rooms.
-  - Basic: Up to 5 users, up to 10 rooms.
-  - Pro: Unlimited users, unlimited rooms.
+GoStayPro is a calendar-first, multi-tenant room management and booking web application designed for small properties, guesthouses, and B&Bs. The philosophy is simplicity, affordability, and a powerful, visually-driven user interface.
 
 ---
 
-## 2. Current MVP Features (implemented)
+## 1. Core Features (Implemented)
 
-- Public Landing Page
-  - Marketing-style landing with hero, graphics, and CTAs to Register/Login.
+-   **Modern, Responsive UI:**
+    -   A professional, responsive design that works seamlessly on desktop and mobile devices.
+    -   Consistent sidebar navigation for both the main user application and the admin panel.
 
-- Authentication (session-based)
-  - Register, Login, Logout.
-  - Secure, server-signed cookie stored in the browser.
+-   **Visual Booking Calendar:**
+    -   A dashboard centered around a multi-room calendar view powered by FullCalendar.
+    -   Color-coded bookings by status (Tentative, Confirmed, Checked-in, etc.).
+    -   Click-and-drag on the calendar to create a new booking with pre-filled dates.
+    -   Click a booking to go to the full-page edit form.
 
-- Dashboard (/app)
-  - Onboarding stepper to guide Property → Rooms → Booking.
-  - Today’s operational widgets: incoming Check-ins and Check-outs for the active property.
-  - FullCalendar per-room calendar with event colors by status and quick selection to create bookings.
+-   **Comprehensive Booking Management (CRUD):**
+    -   Full-page forms for creating, editing, and deleting bookings.
+    -   Automatic conflict detection to prevent double bookings.
+    -   Support for guest details, contact information, price, and private comments.
 
-- Calendar & Bookings
-  - FullCalendar on the client, backed by a JSON events endpoint: GET /htmx/calendar/events.
-  - Booking creation modal via HTMX: GET /htmx/booking/new (returns HTML fragment).
-  - Save booking via HTMX: POST /htmx/booking/save (emits HX-Trigger bookingSaved to refresh calendars).
-  - Prevents double-booking (overlap conflict detection per room).
-  - Booking statuses: tentative, confirmed, checked_in, checked_out, cancelled.
-  - Auto-checkout: any booking whose end_date is in the past is automatically set to checked_out on key views.
+-   **Property & Room Management (CRUD):**
+    -   Multi-property support: users can create and manage multiple homestays.
+    -   Set an "active" property for the main dashboard view.
+    -   Full CRUD for rooms within each property, including name, capacity, default rate, and an image.
 
-- Homestays (CRUD)
-  - Owner creates/edits/deletes homestays.
-  - Set active homestay for current session.
+-   **Powerful Analytics & Reporting:**
+    -   A dedicated Analytics page with a filterable date range.
+    -   Key industry metrics: **Occupancy Rate**, **Average Daily Rate (ADR)**, and **Revenue Per Available Room (RevPAR)**.
+    -   Advanced insights: **Average Length of Stay (ALOS)** and **Average Booking Lead Time**.
+    -   A bar chart visualizing monthly revenue over the last 6 months.
+    -   Data export functionality to download booking reports as **PDF** or **CSV**.
 
-- Rooms (CRUD)
-  - Manage rooms for the active homestay (name, capacity, default_rate).
+-   **User & Team Management:**
+    -   **Staff Invitations:** Property owners can invite team members via email to manage their properties.
+    -   Invited users get a secure, one-time link to set their password and join the team.
 
-- Bookings (CRUD)
-  - Create, edit, delete bookings; overlap conflicts prevented.
-  - Price and all money values displayed as THB with thousand separators (e.g., ฿1,234.00).
+-   **Secure Authentication:**
+    -   Full user authentication flow: Register, Login, Logout.
+    -   Secure, configurable session management with long-lasting cookies.
+    -   **Forgot Password:** A complete, secure password reset workflow via email.
+    -   **Change Password:** Users can change their own passwords from their settings page.
 
-- Overview (/app/overview)
-  - Stats per property: nights, bookings count, profit (sum of booking prices), rooms count.
-  - Today’s counts per property: Check-ins Today, Check-outs Today.
-  - Upcoming Check-ins list for the active property.
-  - Period-based stats filter (start/end). Defaults to current month if no period provided.
+-   **Admin Panel:**
+    -   A dedicated admin section with its own sidebar navigation.
+    -   **User Management:** Admins can create, edit, and delete any user.
+    -   **Subscription Management:** Admins can assign subscription plans to users and manage plan details.
+    -   **Configurable Admin Notifications:** Admins can opt-in to receive an email notification (to a globally configured address) whenever a new user successfully onboards.
 
-- Admin
-  - /admin shows lists of Users, Properties, Subscriptions for admin users.
-  - /admin/plans lets admins assign or update a user's subscription (plan, status, expiry).
+-   **Modern Tech Stack:**
+    -   **HTMX-powered UI:** Key interactions like the image preview modal are powered by HTMX for a smooth, single-page application feel without the complexity of a large JavaScript framework.
+    -   **Cloudinary Integration:** For robust, cloud-based image hosting.
 
 ---
 
-## 3. High-Level Architecture
+## 2. High-Level Architecture
 
-- Frontend: HTML5 + Tailwind CSS. Interactivity via HTMX for partial HTML updates and FullCalendar for the dashboard calendar UI.
-- Backend: Monolithic FastAPI service handling auth, business logic, DB access, and Jinja2 template rendering.
-- Database: SQLAlchemy ORM. Defaults to SQLite locally; supports PostgreSQL in production (Railway).
-- Deployment: Dockerized; designed to run on Railway with a managed PostgreSQL.
-
-Mermaid diagram:
+-   **Frontend:** HTML5 + Tailwind CSS. Interactivity is primarily handled by **HTMX** for partial HTML updates, with targeted use of **Alpine.js** and **FullCalendar** for specific components.
+-   **Backend:** Monolithic FastAPI service handling auth, business logic, DB access, and Jinja2 template rendering.
+-   **Database:** SQLAlchemy ORM. Defaults to SQLite locally; supports PostgreSQL in production.
+-   **Deployment:** Fully Dockerized and designed for one-click deployment on platforms like Railway.
 
 ```mermaid
 flowchart LR
   subgraph Client
-    A[Browser\nHTML + CSS + HTMX + FullCalendar]
+    A[Browser\nHTML + CSS + HTMX + Alpine.js + FullCalendar]
   end
 
-  subgraph Railway[Railway Deployment]
-    subgraph App[FastAPI Monolith]
-      B[FastAPI Routers\n- public_views\n- auth_views\n- app_views\n- rooms_views\n- bookings_views\n- homestays_views\n- calendar_htmx_views\n- admin_views]
-      C[Jinja2 Templates\nSSR + HTMX partials]
-      D[Security\nSession cookie]
-      E[SQLAlchemy ORM]
-      G[Auto-Checkout Service]
-    end
-
-    F[(PostgreSQL / SQLite)]
+  subgraph Server[FastAPI Monolith]
+    B[Routers]
+    C[Jinja2 Templates]
+    D[Security & Auth]
+    E[SQLAlchemy ORM]
+    G[Services]
   end
 
-  A -- HTMX GET/POST --> B
-  A -- FullCalendar events JSON --> B
+  F[(PostgreSQL / SQLite)]
+
+  A -- HTMX/HTTP Requests --> B
   B -- Render --> C
+  B -- Use --> D
+  B -- Use --> G
   B -- Query/Commit --> E
   E -- Connection --> F
-  B -- trigger --> G
 ```
 
 ---
 
-## 4. Detailed Architecture & Routes
+## 3. Data Structure
 
-- Web Framework: FastAPI
-- Server: Uvicorn
-- Templates: Jinja2
-- Interactivity: HTMX 1.9+ and FullCalendar 6.x via CDN
-- ORM: SQLAlchemy 2.0
-- Auth: Session cookie via itsdangerous
-
----
-
-## 5. Data Structure and Relations
-
-Core tables and fields are defined in the SQLAlchemy models. See `app/models.py` for details. The ER diagram below provides an overview.
+Core tables and fields are defined in the SQLAlchemy models. See `app/models/` for details.
 
 ```mermaid
 erDiagram
@@ -126,68 +105,90 @@ erDiagram
     email varchar
     hashed_password varchar
     role varchar
-    homestay_id int
-    created_at timestamp
+    homestay_id int FK
+    created_at datetime
     currency varchar
+    is_verified bool
+    verification_token varchar
+    invitation_token varchar
+    password_reset_token varchar
+    password_reset_expires_at datetime
   }
+
   SUBSCRIPTIONS {
     id int PK
-    owner_id int
-    plan_name enum
-    status enum
-    expires_at timestamp
+    owner_id int FK
+    plan_id int FK
+    status varchar
+    expires_at datetime
   }
+
+  PLANS {
+    id int PK
+    name varchar
+    price_monthly float
+    price_yearly float
+    room_limit int
+    user_limit int
+    is_active bool
+  }
+
   HOMESTAYS {
     id int PK
-    owner_id int
+    owner_id int FK
     name varchar
     address varchar
-    created_at timestamp
+    image_url varchar
+    created_at datetime
   }
+
   ROOMS {
     id int PK
-    homestay_id int
+    homestay_id int FK
     name varchar
     capacity int
     default_rate decimal
+    image_url varchar
+    ota_ical_url varchar
   }
+
   BOOKINGS {
     id int PK
-    room_id int
+    room_id int FK
     guest_name varchar
     guest_contact varchar
     start_date date
     end_date date
     price decimal
-    status enum
+    status varchar
+    comment text
+    image_url varchar
+    created_at datetime
   }
 ```
 
 ---
 
-## 6. Technology Stack
+## 4. Local Development (Docker Recommended)
 
-- Python 3.10+
-- FastAPI + Uvicorn
-- SQLAlchemy 2.0 + Alembic
-- PostgreSQL (production) / SQLite (local)
-- Jinja2 templates
-- HTMX 1.9+
-- FullCalendar 6.x
-- Tailwind CSS (via CDN)
-- Docker & Docker Compose
+The recommended way to run the project locally is with Docker Compose, as it perfectly mirrors the production environment.
 
----
+1.  **Configure Environment:**
+    -   Copy `.env.example` to `.env`.
+    -   Fill in the required variables, especially `SECRET_KEY`.
 
-## 7. Local Development
+2.  **Build and Run:**
+    ```bash
+    docker-compose up --build
+    ```
+    -   The `--build` flag ensures the Docker image is rebuilt with the latest code and dependencies.
+    -   The application will be available at `http://localhost:8000`.
+    -   The `entrypoint.sh` script will automatically run database migrations (`alembic upgrade head`) on startup.
 
-### Quick Start (Script)
-```bash
-bash run_local.sh
-```
-This script sets up the virtual environment, installs dependencies, and starts the Uvicorn server with live reload.
+### Manual Setup (Alternative)
 
-### Manual Setup
+If you prefer not to use Docker:
+
 1.  Create and activate a virtualenv: `python -m venv .venv && source .venv/bin/activate`
 2.  Install dependencies: `pip install -r requirements.txt`
 3.  Copy `.env.example` to `.env` and configure variables.
@@ -196,49 +197,38 @@ This script sets up the virtual environment, installs dependencies, and starts t
 
 ---
 
-## 8. Deployment on Railway
+## 5. Environment Variables
 
-The application is optimized for deployment on Railway using Docker. The deployment process is configured using `Railway.toml` and a multi-stage `Dockerfile`.
+The application is configured via environment variables defined in the `.env` file.
 
-### Key Configuration:
-
--   **`Railway.toml`**:
-    -   Specifies a Dockerfile-based build.
-    -   Uses a `releaseCommand = "alembic upgrade head"` to run database migrations safely during the release phase.
-    -   Includes a health check at the `/healthz` endpoint.
-
--   **`Dockerfile`**:
-    -   **Multi-Stage Build:** Uses a two-stage build to create a lean, secure final image. The first stage builds the Python dependencies, and the second stage copies them into a clean image with the application source code.
-    -   **Non-Root User:** Creates and runs the application as a non-root `appuser` for improved security.
-    -   **Entrypoint Script:** Uses an `entrypoint.sh` script to handle application startup.
-
-### Deployment Steps:
-
-1.  **Provision Services:**
-    -   Create a **PostgreSQL** service on Railway.
-    -   Create a new service and connect it to your GitHub repository. Railway will automatically detect the `Dockerfile` and `Railway.toml`.
-
-2.  **Configure Environment Variables:**
-    -   In the Railway service dashboard, go to the **Variables** tab.
-    -   Railway will automatically inject the `DATABASE_URL` from the PostgreSQL service.
-    -   Add a `SECRET_KEY` and set it to a strong, randomly generated value.
-    -   Optionally, add `CLOUDINARY_URL` to enable image uploads.
-
-3.  **Deploy:**
-    -   Pushing to your main branch will trigger a new deployment on Railway.
-    -   During the deployment, Railway will first run the `releaseCommand` (`alembic upgrade head`) and then start the application service.
-    -   Once deployed, Railway will provide a public domain to access the application.
+| Variable                          | Description                                                                 |
+| --------------------------------- | --------------------------------------------------------------------------- |
+| `SECRET_KEY`                      | **Required.** A long, random string for signing session cookies.              |
+| `DATABASE_URL`                    | **Required.** The connection string for your database (e.g., PostgreSQL).     |
+| `SESSION_MAX_AGE_DAYS`            | How long a user stays logged in. Defaults to `30`.                          |
+| `ADMIN_EMAIL`                     | The email for the default admin user, created on first startup.             |
+| `ADMIN_PASSWORD`                  | The password for the default admin user.                                    |
+| `ADMIN_NOTIFICATION_EMAIL`        | The email address to send new user notifications to.                        |
+| `ADMIN_NOTIFICATION_EMAIL_ENABLE` | Set to `true` to enable new user notifications.                             |
+| `CLOUDINARY_URL`                  | Optional. Your Cloudinary connection string to enable cloud image uploads.  |
+| `MAILGUN_API_KEY`                 | Optional. Your Mailgun API key for sending emails.                          |
+| `MAILGUN_DOMAIN`                  | Optional. Your Mailgun domain.                                              |
+| `RECAPTCHA_SITE_KEY`              | Optional. Google reCAPTCHA v3 site key.                                     |
+| `RECAPTCHA_SECRET_KEY`            | Optional. Google reCAPTCHA v3 secret key.                                   |
 
 ---
 
-## 9. Database Migrations (Alembic)
+## 6. Database Migrations (Alembic)
 
-The app uses Alembic for database migrations.
+The app uses Alembic for database schema migrations.
 
--   **Local Usage:**
-    -   Apply migrations: `alembic upgrade head`
-    -   Generate a new migration: `alembic revision --autogenerate -m "your message"`
+-   **Generate a new migration:**
+    ```bash
+    alembic revision --autogenerate -m "Your descriptive message"
+    ```
+-   **Apply migrations:**
+    ```bash
+    alembic upgrade head
+    ```
 
--   **Docker/Railway:**
-    -   On Railway, migrations are run automatically during the release phase via the `releaseCommand`.
-    -   For local Docker development, the `entrypoint.sh` script runs migrations before starting the application.
+In the Docker environment, migrations are run automatically by the `entrypoint.sh` script on startup.

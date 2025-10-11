@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func, extract
 from ..db import get_db
 from ..models import User, Homestay, Room, Booking, BookingStatus
-from ..security import get_current_user_id
+from ..security import require_user
 from ..services.auto_checkout import run_auto_checkout
 from ..templating import templates
 from ..services import reporting
@@ -13,11 +13,7 @@ from ..services import reporting
 router = APIRouter(tags=["app"])
 
 @router.get("/app", response_class=HTMLResponse)
-def dashboard(request: Request, db: Session = Depends(get_db)):
-    uid = get_current_user_id(request)
-    if not uid:
-        return RedirectResponse(url="/auth/login", status_code=303)
-    user = db.query(User).get(uid)
+def dashboard(request: Request, user: User = Depends(require_user), db: Session = Depends(get_db)):
     # Auto-checkout any past stays before presenting data
     try:
         run_auto_checkout(db)
@@ -108,14 +104,7 @@ def dashboard(request: Request, db: Session = Depends(get_db)):
     )
 
 @router.get("/app/analytics", response_class=HTMLResponse)
-def analytics_page(request: Request, db: Session = Depends(get_db), start: str | None = None, end: str | None = None):
-    uid = get_current_user_id(request)
-    if not uid:
-        return RedirectResponse(url="/auth/login", status_code=303)
-    user = db.query(User).get(uid)
-    if not user:
-        return RedirectResponse(url="/auth/login", status_code=303)
-
+def analytics_page(request: Request, user: User = Depends(require_user), db: Session = Depends(get_db), start: str | None = None, end: str | None = None):
     # Auto-checkout in case any past stays need status update
     try:
         run_auto_checkout(db)
@@ -160,8 +149,8 @@ def analytics_page(request: Request, db: Session = Depends(get_db), start: str |
     # --- Advanced Analytics ---
     total_nights_sold = sum((b.end_date - b.start_date).days for b in bookings_in_period)
     total_revenue = sum(b.price for b in bookings_in_period if b.price is not None)
-    avg_lead_time = db.query(func.avg(Booking.start_date - Booking.created_at)).filter(Booking.id.in_([b.id for b in bookings_in_period])).scalar()
-    avg_lead_time = avg_lead_time.days if avg_lead_time else 0
+    avg_lead_time_result = db.query(func.avg(Booking.start_date - Booking.created_at)).filter(Booking.id.in_([b.id for b in bookings_in_period])).scalar()
+    avg_lead_time = avg_lead_time_result.days if avg_lead_time_result else 0
 
     # Monthly revenue breakdown for the last 6 months
     monthly_revenue_data = []
@@ -245,12 +234,7 @@ def _get_overview_data(db: Session, user: User, start: str | None, end: str | No
     return bookings, rooms_map, period_start, period_end
 
 @router.get("/app/analytics/download/csv")
-def download_csv_report(request: Request, db: Session = Depends(get_db), start: str | None = None, end: str | None = None):
-    uid = get_current_user_id(request)
-    if not uid:
-        return Response(status_code=401)
-    user = db.query(User).get(uid)
-
+def download_csv_report(request: Request, user: User = Depends(require_user), db: Session = Depends(get_db), start: str | None = None, end: str | None = None):
     bookings, rooms_map, _, _ = _get_overview_data(db, user, start, end)
     csv_data = reporting.generate_csv_report(bookings, rooms_map)
 
@@ -261,12 +245,7 @@ def download_csv_report(request: Request, db: Session = Depends(get_db), start: 
     )
 
 @router.get("/app/analytics/download/pdf")
-def download_pdf_report(request: Request, db: Session = Depends(get_db), start: str | None = None, end: str | None = None):
-    uid = get_current_user_id(request)
-    if not uid:
-        return Response(status_code=401)
-    user = db.query(User).get(uid)
-
+def download_pdf_report(request: Request, user: User = Depends(require_user), db: Session = Depends(get_db), start: str | None = None, end: str | None = None):
     bookings, rooms_map, period_start, period_end = _get_overview_data(db, user, start, end)
     pdf_bytes = reporting.generate_pdf_report(bookings, rooms_map, user, period_start, period_end)
 

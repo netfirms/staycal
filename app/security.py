@@ -1,8 +1,12 @@
 from typing import Optional
 from passlib.context import CryptContext
 from itsdangerous import URLSafeSerializer, BadSignature
-from fastapi import Request, Response
+from fastapi import Request, Response, Depends, HTTPException
+from sqlalchemy.orm import Session
+
 from .config import settings
+from .db import get_db
+from .models import User
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 serializer = URLSafeSerializer(settings.SECRET_KEY, salt="staycal-session")
@@ -18,7 +22,6 @@ def verify_password(password: str, hashed: str) -> bool:
 
 def set_session(response: Response, user_id: int):
     token = serializer.dumps({"uid": user_id})
-    # Use getattr for resilience, defaulting to 'development' if the setting is missing.
     is_production = getattr(settings, "ENVIRONMENT", "development") == "production"
     response.set_cookie(
         key=settings.SESSION_COOKIE_NAME,
@@ -27,6 +30,7 @@ def set_session(response: Response, user_id: int):
         samesite="lax",
         secure=is_production,
         path="/",
+        max_age=settings.SESSION_MAX_AGE_DAYS * 24 * 60 * 60
     )
 
 
@@ -43,3 +47,21 @@ def get_current_user_id(request: Request) -> Optional[int]:
         return int(data.get("uid"))
     except (BadSignature, ValueError, TypeError):
         return None
+
+
+def require_user(request: Request, db: Session = Depends(get_db)) -> User:
+    """
+    Dependency to protect routes that require a logged-in user.
+    Redirects to the login page if the user is not authenticated.
+    """
+    user_id = get_current_user_id(request)
+    if not user_id:
+        raise HTTPException(status_code=307, headers={"Location": "/auth/login"})
+    
+    user = db.query(User).get(user_id)
+    if not user:
+        # This case can happen if the user was deleted but the cookie remains.
+        # We raise an exception that will also lead to a redirect.
+        raise HTTPException(status_code=307, headers={"Location": "/auth/login"})
+        
+    return user
