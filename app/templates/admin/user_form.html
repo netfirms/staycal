@@ -1,49 +1,45 @@
-{% extends "base.html" %}
+{% extends "admin/base.html" %}
 
-{% block title %}{{ 'Edit' if user else 'Create' }} User{% endblock %}
+{% block admin_content %}
+<div class="max-w-2xl mx-auto">
+    <h1 class="text-2xl font-semibold mb-4">{{ "Edit User" if user else "Create New User" }}</h1>
 
-{% block content %}
-<div class="container mx-auto px-4 sm:px-8">
-    <div class="py-8">
-        <h2 class="text-2xl font-semibold leading-tight">{{ 'Edit' if user else 'Create' }} User</h2>
-
-        <form method="post" class="mt-8 max-w-lg">
-            <div class="mb-4">
-                <label for="email" class="block text-gray-700 text-sm font-bold mb-2">Email</label>
-                <input type="email" id="email" name="email" value="{{ user.email if user else '' }}" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" required>
-            </div>
-
-            <div class="mb-4">
-                <label for="role" class="block text-gray-700 text-sm font-bold mb-2">Role</label>
-                <select id="role" name="role" class="shadow border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
-                    {% for role in roles %}
-                        <option value="{{ role }}" {% if user and user.role == role %}selected{% endif %}>{{ role }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-
-            <div class="mb-4">
-                <label class="block text-gray-700 text-sm font-bold mb-2">Verified</label>
-                <input type="checkbox" id="is_verified" name="is_verified" {% if user and user.is_verified %}checked{% endif %}>
-            </div>
-            
-            <div class="mb-6">
-                <label for="password" class="block text-gray-700 text-sm font-bold mb-2">Password</label>
-                <input type="password" id="password" name="password" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" {% if not user %}required{% endif %}>
-                {% if user %}
-                <p class="text-xs text-gray-600 mt-1">Leave blank to keep the current password.</p>
-                {% endif %}
-            </div>
-
-            <div class="flex items-center justify-between">
-                <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
-                    Save User
-                </button>
-                <a href="/admin/users" class="inline-block align-baseline font-bold text-sm text-blue-600 hover:text-blue-800">
-                    Cancel
-                </a>
-            </div>
-        </form>
+    {% if error %}
+    <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
+      <span class="block sm:inline">{{ error }}</span>
     </div>
+    {% endif %}
+
+    <form method="post" action="" class="bg-white p-6 rounded-xl shadow-sm border space-y-4">
+        <div>
+            <label for="email" class="block text-sm font-medium text-gray-700">Email Address</label>
+            <input type="email" id="email" name="email" value="{{ user.email if user else '' }}" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+        </div>
+
+        <div>
+            <label for="password" class="block text-sm font-medium text-gray-700">Password</label>
+            <input type="password" id="password" name="password" {% if not user %}required{% endif %} class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+            {% if user %}<p class="text-xs text-gray-500 mt-1">Leave blank to keep the current password.</p>{% endif %}
+        </div>
+
+        <div>
+            <label for="role" class="block text-sm font-medium text-gray-700">Role</label>
+            <select id="role" name="role" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                {% for r in roles %}
+                    <option value="{{ r.value }}" {% if user and user.role == r.value %}selected{% endif %}>{{ r.value.title() }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="flex items-center">
+            <input id="is_verified" name="is_verified" type="checkbox" value="true" {% if user and user.is_verified %}checked{% endif %} class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+            <label for="is_verified" class="ml-2 block text-sm text-gray-900">Is Verified</label>
+        </div>
+
+        <div class="mt-6 flex justify-end gap-3">
+            <a href="/admin/users" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">Cancel</a>
+            <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">{{ "Update User" if user else "Create User" }}</button>
+        </div>
+    </form>
 </div>
 {% endblock %}

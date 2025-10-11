@@ -213,4 +213,117 @@ def admin_users(request: Request, db: Session = Depends(get_db), admin_user: Use
     users = db.query(User).order_by(User.id.asc()).all()
     return templates.TemplateResponse("admin/users.html", {"request": request, "users": users})
 
-# ... (rest of the file is unchanged)
+@router.get("/users/new", response_class=HTMLResponse)
+def admin_user_new_form(request: Request, admin_user: User = Depends(require_admin)):
+    roles_list = [UserRole.ADMIN, UserRole.OWNER, UserRole.STAFF]
+    return templates.TemplateResponse("admin/user_form.html", {"request": request, "roles": roles_list, "user": None})
+
+@router.post("/users/new", response_class=HTMLResponse)
+def admin_user_new(request: Request, db: Session = Depends(get_db), admin_user: User = Depends(require_admin), email: str = Form(...), password: str = Form(...), role: str = Form(...), is_verified: bool = Form(False)):
+    existing_user = db.query(User).filter(User.email == email).first()
+    if existing_user:
+        roles_list = [UserRole.ADMIN, UserRole.OWNER, UserRole.STAFF]
+        return templates.TemplateResponse("admin/user_form.html", {"request": request, "roles": roles_list, "user": None, "error": "User with this email already exists."})
+    
+    new_user = User(
+        email=email,
+        hashed_password=hash_password(password),
+        role=role,
+        is_verified=is_verified
+    )
+    db.add(new_user)
+    db.commit()
+    return RedirectResponse(url="/admin/users", status_code=303)
+
+@router.get("/users/{user_id}/edit", response_class=HTMLResponse)
+def admin_user_edit_form(request: Request, user_id: int, db: Session = Depends(get_db), admin_user: User = Depends(require_admin)):
+    user = db.query(User).get(user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    roles_list = [UserRole.ADMIN, UserRole.OWNER, UserRole.STAFF]
+    return templates.TemplateResponse("admin/user_form.html", {"request": request, "roles": roles_list, "user": user})
+
+@router.post("/users/{user_id}/edit", response_class=HTMLResponse)
+def admin_user_edit(request: Request, user_id: int, db: Session = Depends(get_db), admin_user: User = Depends(require_admin), email: str = Form(...), password: str = Form(None), role: str = Form(...), is_verified: bool = Form(False)):
+    user = db.query(User).get(user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    user.email = email
+    user.role = role
+    user.is_verified = is_verified
+    if password:
+        user.hashed_password = hash_password(password)
+    
+    db.commit()
+    return RedirectResponse(url="/admin/users", status_code=303)
+
+@router.post("/users/{user_id}/delete")
+def admin_user_delete(request: Request, user_id: int, db: Session = Depends(get_db), admin_user: User = Depends(require_admin)):
+    user = db.query(User).get(user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    db.delete(user)
+    db.commit()
+    return RedirectResponse(url="/admin/users", status_code=303)
+
+@router.get("/plans", response_class=HTMLResponse)
+def admin_plans(request: Request, db: Session = Depends(get_db), admin_user: User = Depends(require_admin)):
+    users = db.query(User).order_by(User.id.asc()).all()
+    subs = db.query(Subscription).all()
+    subs_map = {s.owner_id: s for s in subs}
+    plans = db.query(Plan).order_by(Plan.id.asc()).all()
+    return templates.TemplateResponse(
+        "admin/plans.html",
+        {
+            "request": request,
+            "users": users,
+            "subs_map": subs_map,
+            "plans": plans,
+            "SubscriptionStatus": SubscriptionStatus,
+        },
+    )
+
+@router.get("/plans/manage", response_class=HTMLResponse)
+def admin_plan_management(request: Request, db: Session = Depends(get_db), admin_user: User = Depends(require_admin)):
+    plans = db.query(Plan).order_by(Plan.id.asc()).all()
+    return templates.TemplateResponse("admin/plan_management.html", {"request": request, "plans": plans, "plan": None})
+
+@router.get("/plans/{plan_id}/edit", response_class=HTMLResponse)
+def admin_plan_edit_form(request: Request, plan_id: int, db: Session = Depends(get_db), admin_user: User = Depends(require_admin)):
+    plan = db.query(Plan).get(plan_id)
+    if not plan:
+        raise HTTPException(status_code=404, detail="Plan not found")
+    plans = db.query(Plan).order_by(Plan.id.asc()).all()
+    return templates.TemplateResponse("admin/plan_management.html", {"request": request, "plans": plans, "plan": plan})
+
+@router.post("/plans/save/{plan_id}", response_class=HTMLResponse)
+def admin_plan_save(request: Request, plan_id: int, db: Session = Depends(get_db), admin_user: User = Depends(require_admin), name: str = Form(...), price_monthly: float = Form(...), price_yearly: float = Form(...), room_limit: int = Form(...), user_limit: int = Form(...), is_active: bool = Form(False)):
+    if plan_id == 0: # Create new plan
+        plan = Plan()
+        db.add(plan)
+    else: # Edit existing plan
+        plan = db.query(Plan).get(plan_id)
+        if not plan:
+            raise HTTPException(status_code=404, detail="Plan not found")
+
+    plan.name = name
+    plan.price_monthly = price_monthly
+    plan.price_yearly = price_yearly
+    plan.room_limit = room_limit
+    plan.user_limit = user_limit
+    plan.is_active = is_active
+    
+    db.commit()
+    return RedirectResponse(url="/admin/plans/manage", status_code=303)
+
+@router.post("/plans/{plan_id}/delete")
+def admin_plan_delete(request: Request, plan_id: int, db: Session = Depends(get_db), admin_user: User = Depends(require_admin)):
+    plan = db.query(Plan).get(plan_id)
+    if not plan:
+        raise HTTPException(status_code=404, detail="Plan not found")
+    
+    db.delete(plan)
+    db.commit()
+    return RedirectResponse(url="/admin/plans/manage", status_code=303)

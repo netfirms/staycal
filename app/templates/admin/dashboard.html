@@ -1,17 +1,10 @@
-{% extends 'base.html' %}
-{% block content %}
-<div class="mb-4 flex items-center justify-between">
-  <h1 class="text-2xl font-semibold">Admin Dashboard</h1>
-  <div class="flex gap-2">
-    <a href="/admin/users" class="px-3 py-2 border rounded bg-white hover:bg-gray-50">Manage Users</a>
-    <a href="/admin/plans" class="px-3 py-2 border rounded bg-white hover:bg-gray-50">Assign Subscriptions</a>
-    <a href="/admin/plans/manage" class="px-3 py-2 border rounded bg-white hover:bg-gray-50">Manage Plans</a>
-    <a href="/admin/settings" class="px-3 py-2 border rounded bg-white hover:bg-gray-50">Admin Settings</a>
-  </div>
-</div>
+{% extends "admin/base.html" %}
+
+{% block admin_content %}
+<h1 class="text-2xl font-semibold mb-6">Admin Dashboard</h1>
 
 {% if analytics %}
-<div class="grid md:grid-cols-3 lg:grid-cols-4 gap-4 mb-6">
+<div class="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
     <div class="bg-white p-4 rounded-xl border shadow-sm">
         <h3 class="text-sm font-medium text-gray-500">Total Users</h3>
         <p class="text-3xl font-semibold text-gray-800">{{ analytics.users_count }}</p>
