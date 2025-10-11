@@ -5,7 +5,13 @@
 <div class="mb-4 bg-white border rounded-xl p-4 flex flex-wrap items-center gap-4">
   <div class="flex items-center gap-4 flex-1 min-w-[200px]">
     {% if active and active.image_url %}
-      <img src="{{ active.image_url }}" alt="{{ active.name }}" class="w-20 h-20 rounded-lg object-cover border" />
+      <a href="{{ active.image_url }}" 
+         hx-get="/ui/image-modal?image_url={{ active.image_url }}&alt_text={{ active.name|urlencode }}"
+         hx-target="body"
+         hx-swap="beforeend"
+         class="block cursor-pointer">
+        <img src="{{ active.image_url }}" alt="{{ active.name }}" class="w-20 h-20 rounded-lg object-cover border" />
+      </a>
     {% endif %}
     <div>
       <div class="text-xs text-gray-500">Active Property</div>
@@ -175,7 +181,13 @@
           <summary class="cursor-pointer list-none flex items-center justify-between">
             <div class="flex items-center gap-2">
               {% if r.image_url %}
-                <img src="{{ r.image_url }}" alt="{{ r.name }}" class="w-8 h-8 rounded object-cover border" />
+                <a href="{{ r.image_url }}" 
+                   hx-get="/ui/image-modal?image_url={{ r.image_url }}&alt_text={{ r.name|urlencode }}"
+                   hx-target="body"
+                   hx-swap="beforeend"
+                   class="block cursor-pointer">
+                  <img src="{{ r.image_url }}" alt="{{ r.name }}" class="w-8 h-8 rounded object-cover border" />
+                </a>
               {% endif %}
               <div class="font-medium">{{ r.name }} <span class="text-xs text-gray-500">(cap {{ r.capacity }})</span></div>
             </div>
