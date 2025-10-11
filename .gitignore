@@ -35,7 +35,7 @@ ENV/
 # Ignore environment files, but keep the example for guidance
 .env
 .env.*
-!.env.example
+.env.example
 
 # PyInstaller
 *.manifest
